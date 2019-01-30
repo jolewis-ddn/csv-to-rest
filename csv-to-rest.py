@@ -73,6 +73,29 @@ def countFieldValue(field, value):
       counter += 1
   return(buildResponseObjectSuccessCount(counter))
 
+@route('/countDouble/<field1>/<value1>/<field2>/<value2>')
+def countFieldValueTwo(field1, value1, field2, value2):
+  # Get the # of the field you're searching for
+  fieldnum1 = csvfields.index(field1)
+  fieldnum2 = csvfields.index(field2)
+  counter = 0
+  for r in csvcontents:
+    if (r[fieldnum1] == value1) and (r[fieldnum2] == value2): # Match, so increment the counter
+      counter += 1
+  return(buildResponseObjectSuccessCount(counter))
+
+@route('/countTriple/<field1>/<value1>/<field2>/<value2>/<field3>/<value3>')
+def countFieldValueThree(field1, value1, field2, value2, field3, value3):
+  # Get the # of the field you're searching for
+  fieldnum1 = csvfields.index(field1)
+  fieldnum2 = csvfields.index(field2)
+  fieldnum3 = csvfields.index(field3)
+  counter = 0
+  for r in csvcontents:
+    if (r[fieldnum1] == value1) and (r[fieldnum2] == value2) and (r[fieldnum3] == value3): # Match, so increment the counter
+      counter += 1
+  return(buildResponseObjectSuccessCount(counter))
+
 @route('/_admin/redirect/<new_filename>')
 def redirect(new_filename):
   if (os.path.isfile(csvpath + new_filename)):
