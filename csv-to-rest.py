@@ -62,6 +62,41 @@ def getFieldValue(field, value):
       result_rows.append(hit)
   return(buildResponseObjectSuccess(result_rows))
 
+@route('/get/<field1>/<value1>/<field2>/<value2>')
+def getFieldValueDouble(field1, value1, field2, value2):
+  result_rows = []
+  # Get the # of the field you're searching for
+  fieldnum1 = csvfields.index(field1)
+  fieldnum2 = csvfields.index(field2)
+  for r in csvcontents:
+    if (r[fieldnum1] == value1) and (r[fieldnum2] == value2): # Match, so save the row
+      hit = {}
+      fieldCtr = 0
+      # Add field names
+      for f in r:
+        hit[csvfields[fieldCtr]] = f
+        fieldCtr += 1
+      result_rows.append(hit)
+  return(buildResponseObjectSuccess(result_rows))
+
+@route('/get/<field1>/<value1>/<field2>/<value2>/<field3>/<value3>')
+def getFieldValueTriple(field1, value1, field2, value2, field3, value3):
+  result_rows = []
+  # Get the # of the field you're searching for
+  fieldnum1 = csvfields.index(field1)
+  fieldnum2 = csvfields.index(field2)
+  fieldnum3 = csvfields.index(field3)
+  for r in csvcontents:
+    if (r[fieldnum1] == value1) and (r[fieldnum2] == value2) and (r[fieldnum3] == value3): # Match, so save the row
+      hit = {}
+      fieldCtr = 0
+      # Add field names
+      for f in r:
+        hit[csvfields[fieldCtr]] = f
+        fieldCtr += 1
+      result_rows.append(hit)
+  return(buildResponseObjectSuccess(result_rows))
+
 @route('/count/<field>/<value>')
 def countFieldValue(field, value):
   result_rows = []
@@ -73,7 +108,7 @@ def countFieldValue(field, value):
       counter += 1
   return(buildResponseObjectSuccessCount(counter))
 
-@route('/countDouble/<field1>/<value1>/<field2>/<value2>')
+@route('/count/<field1>/<value1>/<field2>/<value2>')
 def countFieldValueTwo(field1, value1, field2, value2):
   # Get the # of the field you're searching for
   fieldnum1 = csvfields.index(field1)
@@ -84,7 +119,7 @@ def countFieldValueTwo(field1, value1, field2, value2):
       counter += 1
   return(buildResponseObjectSuccessCount(counter))
 
-@route('/countTriple/<field1>/<value1>/<field2>/<value2>/<field3>/<value3>')
+@route('/count/<field1>/<value1>/<field2>/<value2>/<field3>/<value3>')
 def countFieldValueThree(field1, value1, field2, value2, field3, value3):
   # Get the # of the field you're searching for
   fieldnum1 = csvfields.index(field1)
