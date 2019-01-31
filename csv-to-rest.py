@@ -21,7 +21,7 @@ def home():
 
 @route('/_admin')
 def admin():
-  return '<h1>admin page</h1><h2># of records</h2>' + str(len(csvcontents) - 1) + "<h2>Fields</h2><UL><LI>" + '</LI><LI>'.join(csvfields) + "</LI></UL>\n" + "<h2>Available data files</h2>" + listDataFiles()
+  return '<h1>admin page</h1><h2>Filename</h2>' + csvfilename + '<h2># of records</h2>' + str(len(csvcontents) - 1) + "<h2>Fields</h2><UL><LI>" + '</LI><LI>'.join(csvfields) + "</LI></UL>\n" + "<h2>Available data files</h2>" + listDataFiles()
 
 @route('/_admin/showfields')
 def adminShowfields():
@@ -130,6 +130,30 @@ def countFieldValueThree(field1, value1, field2, value2, field3, value3):
     if (r[fieldnum1] == value1) and (r[fieldnum2] == value2) and (r[fieldnum3] == value3): # Match, so increment the counter
       counter += 1
   return(buildResponseObjectSuccessCount(counter))
+
+@route('/list/<field>')
+def listValuesByField(field):
+  values = {}
+  fieldnum = csvfields.index(field)
+  for r in csvcontents:
+    if not r[fieldnum] in values:
+      values[r[fieldnum]] = 1
+    else:
+      values[r[fieldnum]] += 1
+  return values
+
+@route('/list/<field>/<filter>/<value>')
+def listValuesByFieldFiltered(field, filter, value):
+  values = {}
+  fieldnum = csvfields.index(field)
+  filternum = csvfields.index(filter)
+  for r in csvcontents:
+    if (r[filternum] == value):
+      if not r[fieldnum] in values:
+        values[r[fieldnum]] = 1
+      else:
+        values[r[fieldnum]] += 1
+  return values
 
 @route('/_admin/redirect/<new_filename>')
 def redirect(new_filename):
