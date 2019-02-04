@@ -67,9 +67,10 @@ def getOwnerUS(owner):
     return(json.loads(getOwnerData)['data'])
 
 def formatUS(entry):
+    # print(entry)
     result = ''.join(["<a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", 
                      entry['ID'],
-                     "' target='_blank'>", entry['ID'], "</a>: ", entry['Name'], " (<a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", entry['Feature'], "' target='_blank'>", entry['Feature'], "</a>/<!-- Rank: ", str(Rally.calculateRank(entry['DragAndDropRank'], 6)), ";-->", entry['Release'], "/", entry['ScheduleState'], ")"])
+                     "' target='_blank'>", entry['ID'], "</a>: ", entry['Name'], " (<a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", entry['Feature'], "' target='_blank'>", entry['Feature'], "</a>/<!-- Rank: ", str(Rally.calculateRank(entry['DragAndDropRank'], 6)), ";-->", entry['Release'], "/", entry['ScheduleState'], "/Est.:", entry['PlanEstimate'], ")"])
     return(result)
 
 @route('/US/OwnerReport/Release/<release>')
