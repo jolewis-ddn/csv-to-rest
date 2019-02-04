@@ -64,6 +64,9 @@ def getFieldValue(field, value):
 
 @route('/get/<field1>/<value1>/<field2>/<value2>')
 def getFieldValueDouble(field1, value1, field2, value2):
+  # Handle empty field spec
+  if value2 == '""':
+    value2 = ""
   result_rows = []
   # Get the # of the field you're searching for
   fieldnum1 = csvfields.index(field1)
