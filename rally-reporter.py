@@ -14,6 +14,8 @@ def home():
     return '<UL><LI><a href="/owners">/owners</a> to list all owners<LI>/owners/Release/<release> to list all owners who have something in that specific release<LI>/US/Owner/<owner> to list all US assigned to <owner></UL>'
 
 REST_SERVER_URL = 'http://localhost:8983'
+INCLUDE_UNASSIGNED = True
+# INCLUDE_UNASSIGNED = False
 
 def getOwnerListJson(rel = -1):
     url = REST_SERVER_URL + '/list/Owner'
@@ -57,6 +59,8 @@ def usOwnerReport():
 
 def getOwnerUS(owner):
     owner_clean = urllib.quote(owner)
+    if owner_clean == '""':
+        owner_clean = ""
     base_url = REST_SERVER_URL + '/get/Release/IME%201.3/Owner/'
     outurl = base_url + owner_clean
     getOwnerData = urllib2.urlopen(outurl).read()
@@ -65,7 +69,7 @@ def getOwnerUS(owner):
 def formatUS(entry):
     result = ''.join(["<a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", 
                      entry['ID'],
-                     "' target='_blank'>", entry['ID'], "</a>: ", entry['Name'], " (Feature: <a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", entry['Feature'], "' target='_blank'>", entry['Feature'], "</a>; Rank: ", str(Rally.calculateRank(entry['DragAndDropRank'], 6)), ")"])
+                     "' target='_blank'>", entry['ID'], "</a>: ", entry['Name'], " (<a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", entry['Feature'], "' target='_blank'>", entry['Feature'], "</a>/<!-- Rank: ", str(Rally.calculateRank(entry['DragAndDropRank'], 6)), ";-->", entry['Release'], "/", entry['ScheduleState'], ")"])
     return(result)
 
 @route('/US/OwnerReport/Release/<release>')
@@ -73,9 +77,11 @@ def usOwnerReportByRelease(release):
     # Print for each owner
     response = "<UL>"
     owners = getOwnerListJson(release)
-    for owner in owners:
-        if (len(owner) > 0):
-            response += "<LI>" + owner
+    for owner in sorted(owners):
+        if (INCLUDE_UNASSIGNED or len(owner) > 0):
+            if owner == '':
+                owner = '""'
+            response += "<LI>" + (owner if owner != '""' else "Unassigned")
             print("Fetching US for owner: " + owner + "!")
             ownerUS = getOwnerUS(owner)
             if len(ownerUS) > 0:
