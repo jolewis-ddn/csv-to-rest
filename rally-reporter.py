@@ -7,30 +7,34 @@ from os.path import isfile, join
 import urllib2
 import urllib
 import math
+import Rally
 
 @route('/')
 def home():
     return '<UL><LI><a href="/owners">/owners</a> to list all owners<LI>/owners/Release/<release> to list all owners who have something in that specific release<LI>/US/Owner/<owner> to list all US assigned to <owner></UL>'
 
 REST_SERVER_URL = 'http://localhost:8983'
+
+def getOwnerListJson(rel = -1):
+    url = REST_SERVER_URL + '/list/Owner'
+    if rel != -1:
+        url += '/Release/' + urllib.quote(rel)
+    resp = urllib2.urlopen(url)
+    content = resp.read()
+    jsonContent = json.loads(content)
+    return(jsonContent)
+
 @route('/owners')
 def ownerList():
+    getListContent_json = getOwnerListJson()
     response = ""
-    getListResponse = urllib2.urlopen(REST_SERVER_URL + '/list/Owner')
-    getListContent = getListResponse.read()
-    getListContent_json = json.loads(getListContent)
     for k in getListContent_json:
         response += "<LI>" + k + " (" + str(getListContent_json[k]) + ")"
     return response
 
 @route('/owners/Release/<release>')
 def ownerList13(release):
-    release_clean = urllib.quote(release)
-    base_url = REST_SERVER_URL + '/list/Owner/Release/'
-    outurl = base_url + release_clean
-    getListResponse = urllib2.urlopen(outurl)
-    getListContent = getListResponse.read()
-    getListContent_json = json.loads(getListContent)
+    getListContent_json = getOwnerListJson(release)
     total_count = sum(getListContent_json.values())
     response = "<H1>Owner List for " + release + "</H1>" + str(total_count) + " total records found assigned to the following owners:<UL>"
     for k in getListContent_json:
@@ -42,16 +46,59 @@ def ownerList13(release):
     response += "</UL>"
     return response
 
-@route('/US/Owner/<owner>')
-def usByOwner(owner):
+@route('/US/OwnerReport')
+def usOwnerReport():
+    # Print for each owner
+    response = "<UL>"
+    owners = getOwnerListJson()
+    for owner in owners:
+        response += "<LI>" + owner + "</LI>"
+    return response
+
+def getOwnerUS(owner):
     owner_clean = urllib.quote(owner)
     base_url = REST_SERVER_URL + '/get/Release/IME%201.3/Owner/'
     outurl = base_url + owner_clean
     getOwnerData = urllib2.urlopen(outurl).read()
-    getOwnerData_json = json.loads(getOwnerData)
-    response = "<H1>Item List for " + owner + "</H1><UL>"
-    for entry in getOwnerData_json['data']:
-        response += "<LI><a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=" + entry['ID'] + "' target='_blank'>" + entry['ID'] + "</a>: " + entry['Name'] + " (Feature: " + entry['Feature'] + ")"
+    return(json.loads(getOwnerData)['data'])
+
+def formatUS(entry):
+    result = ''.join(["<a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", 
+                     entry['ID'],
+                     "' target='_blank'>", entry['ID'], "</a>: ", entry['Name'], " (Feature: <a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", entry['Feature'], "' target='_blank'>", entry['Feature'], "</a>; Rank: ", str(Rally.calculateRank(entry['DragAndDropRank'], 6)), ")"])
+    return(result)
+
+@route('/US/OwnerReport/Release/<release>')
+def usOwnerReportByRelease(release):
+    # Print for each owner
+    response = "<UL>"
+    owners = getOwnerListJson(release)
+    for owner in owners:
+        if (len(owner) > 0):
+            response += "<LI>" + owner
+            print("Fetching US for owner: " + owner + "!")
+            ownerUS = getOwnerUS(owner)
+            if len(ownerUS) > 0:
+                response += "<UL>"
+                sortedList = {}
+                for entry in ownerUS:
+                    sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = formatUS(entry)
+                    # response += sortedList[key]
+                for us in sorted(sortedList):
+                    response += "<LI>" + sortedList[us] + "</LI>"
+                response += "</UL>"
+            response += "</LI>"
+    return response
+
+@route('/US/Owner/<owner>')
+def usByOwner(owner):
+    getOwnerData_json = getOwnerUS(owner)
+    response = "<H1>Item List for " + owner + "</H1><p><em>In priority order</em></p><UL>"
+    sortedList = {}
+    for entry in getOwnerData_json:
+        sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = "<LI>" + formatUS(entry)
+    for key in sorted(sortedList):
+        response += sortedList[key]
     response += "</UL>"
     return response
 
