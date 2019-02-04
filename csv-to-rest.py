@@ -60,7 +60,7 @@ def getFieldValue(field, value):
         hit[csvfields[fieldCtr]] = f
         fieldCtr += 1
       result_rows.append(hit)
-  return(buildResponseObjectSuccess(result_rows))
+  return buildResponseObjectSuccess(result_rows)
 
 @route('/get/<field1>/<value1>/<field2>/<value2>')
 def getFieldValueDouble(field1, value1, field2, value2):
@@ -80,7 +80,7 @@ def getFieldValueDouble(field1, value1, field2, value2):
         hit[csvfields[fieldCtr]] = f
         fieldCtr += 1
       result_rows.append(hit)
-  return(buildResponseObjectSuccess(result_rows))
+  return buildResponseObjectSuccess(result_rows)
 
 @route('/get/<field1>/<value1>/<field2>/<value2>/<field3>/<value3>')
 def getFieldValueTriple(field1, value1, field2, value2, field3, value3):
@@ -98,7 +98,7 @@ def getFieldValueTriple(field1, value1, field2, value2, field3, value3):
         hit[csvfields[fieldCtr]] = f
         fieldCtr += 1
       result_rows.append(hit)
-  return(buildResponseObjectSuccess(result_rows))
+  return buildResponseObjectSuccess(result_rows)
 
 @route('/count/<field>/<value>')
 def countFieldValue(field, value):
@@ -109,7 +109,7 @@ def countFieldValue(field, value):
   for r in csvcontents:
     if r[fieldnum] == value: # Match, so increment the counter
       counter += 1
-  return(buildResponseObjectSuccessCount(counter))
+  return buildResponseObjectSuccessCount(counter)
 
 @route('/count/<field1>/<value1>/<field2>/<value2>')
 def countFieldValueTwo(field1, value1, field2, value2):
@@ -120,7 +120,7 @@ def countFieldValueTwo(field1, value1, field2, value2):
   for r in csvcontents:
     if (r[fieldnum1] == value1) and (r[fieldnum2] == value2): # Match, so increment the counter
       counter += 1
-  return(buildResponseObjectSuccessCount(counter))
+  return buildResponseObjectSuccessCount(counter)
 
 @route('/count/<field1>/<value1>/<field2>/<value2>/<field3>/<value3>')
 def countFieldValueThree(field1, value1, field2, value2, field3, value3):
@@ -132,7 +132,7 @@ def countFieldValueThree(field1, value1, field2, value2, field3, value3):
   for r in csvcontents:
     if (r[fieldnum1] == value1) and (r[fieldnum2] == value2) and (r[fieldnum3] == value3): # Match, so increment the counter
       counter += 1
-  return(buildResponseObjectSuccessCount(counter))
+  return buildResponseObjectSuccessCount(counter)
 
 @route('/list/<field>')
 def listValuesByField(field):
@@ -143,7 +143,7 @@ def listValuesByField(field):
       values[r[fieldnum]] = 1
     else:
       values[r[fieldnum]] += 1
-  return values
+  return buildResponseObjectSuccess(values)
 
 @route('/list/<field>/<filter>/<value>')
 def listValuesByFieldFiltered(field, filter, value):
@@ -156,7 +156,7 @@ def listValuesByFieldFiltered(field, filter, value):
         values[r[fieldnum]] = 1
       else:
         values[r[fieldnum]] += 1
-  return values
+  return buildResponseObjectSuccess(values)
 
 @route('/_admin/redirect/<new_filename>')
 def redirect(new_filename):
@@ -183,32 +183,30 @@ def read_file(fname):
       csvdict[row[0]] = row
     csvfields = csvcontents[0]
 
+def buildBasicResponseObject(status, remainder = {}):
+  response = {}
+  response['meta'] = {}
+  response['meta']['status'] = status
+  response['meta']['filename'] = csvfilename
+  response['meta'].update(remainder)
+  return(response)
+
 def buildResponseObjectSuccessCount(counter):
-  result = {}
-  result['meta'] = {}
-  result['meta']['status'] = 'success'
+  result = buildBasicResponseObject('success')
   result['data'] = { 'count': counter }
   return result
 
 def buildResponseObjectSuccessOk():
-  result = {}
-  result['meta'] = {}
-  result['meta']['status'] = 'success'
+  result = buildBasicResponseObject('success')
   return result
 
 def buildResponseObjectSuccess(data):
-  result = {}
-  result['meta'] = {}
-  result['meta']['status'] = 'success'
-  result['meta']['hit_count'] = len(data)
+  result = buildBasicResponseObject('success', { 'hit_count': len(data) })
   result['data'] = data
   return result
 
 def buildResponseObjectError(errors):
-  result = {}
-  result['meta'] = {}
-  result['meta']['status'] = 'error'
-  result['meta']['error_count'] = len(errors)
+  result = buildBasicResponseObject('error', { 'error_count': len(errors) })
   result['errors'] = errors
   return result
 
