@@ -56,16 +56,36 @@ def getDataFileList():
     resp = urllib2.urlopen(REST_SERVER_URL + '/_admin/get/filenames').read()
     list = json.loads(resp)['data']
     setFilename(json.loads(resp)['meta']['filename'])
-    # print(type(list))
     return(list)
 
 def getSelectedFile():
     resp = urllib2.urlopen(REST_SERVER_URL + '/_admin/get/selectedFile').read()
     list = json.loads(resp)['data']
-    print(list)
     setFilename(list[0])
-    print("setFilename(" + list[0] + ")")
     return(list)
+
+def getStats(us_list):
+    response = ""
+    total_count = len(us_list)
+    estimated = 0
+    est_total = 0
+    sprints = {}
+    for us in us_list:
+        iter = us['Iteration'] if us['Iteration'] != "" else "none"
+        if iter in sprints:
+            sprints[iter] += 1
+        else:
+            sprints[iter] = 1
+        est_total += float(us['PlanEstimate']) if us['PlanEstimate'] != "" else 0
+        estimated += 1 if us['PlanEstimate'] != "" else 0
+    if (estimated > 0):
+        est_perc = int(round(100*((1.0*estimated)/total_count), 0))
+    else:
+        est_perc = 0
+    response = "Total est: %s; Estimated %s of %s items (%s%%); Sprint breakdown: " % (str(est_total), str(estimated), str(total_count), str(est_perc))
+    for sprint in sprints:
+        response += "<B>%s</B>: %s; " % (sprint, str(sprints[sprint]))
+    return response[:-2]
 
 def buildStyleTag(entry):
     resp = ""
@@ -181,9 +201,10 @@ def usOwnerReportByRelease(release):
         if (INCLUDE_UNASSIGNED or len(owner) > 0):
             if owner == '':
                 owner = '""'
-            response += "<LI><a name='" + owner + "'>" + (owner if owner != '""' else "Unassigned") + "</a>"
-            print("Fetching US for owner: " + owner + "!")
             ownerUS = getOwnerUS(owner)
+            owner_clean = owner if owner != '""' else "Unassigned"
+            response += "<LI><a href='/US/Owner/" + owner_clean + "' name='" + owner_clean + "'>" + owner_clean + "</a> (" + getStats(ownerUS) + ")"
+            print("Fetching US for owner: " + owner + "!")
             if len(ownerUS) > 0:
                 response += "<UL>"
                 sortedList = {}
@@ -199,7 +220,7 @@ def usOwnerReportByRelease(release):
 @route('/US/Owner/<owner>')
 def usByOwner(owner):
     getOwnerData_json = getOwnerUS(owner)
-    response = "<H1>Item List for " + owner + "</H1>%s<p><em>In priority order</em></p><UL>" % (getFilenameBlock())
+    response = "<H1>Item List for " + owner + "</H1>%s<p>Stats: %s</p><p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getStats(getOwnerData_json))
     sortedList = {}
     for entry in getOwnerData_json:
         sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = "<LI>" + formatUS(entry)
