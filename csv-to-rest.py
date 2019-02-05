@@ -37,9 +37,25 @@ def adminGetFilenames():
   filelist = getDataFiles()
   return buildResponseObjectSuccess(filelist)
 
-@route('/_admin/dump')
-def adminDump():
-  return static_file(csvfilename, root=csvpath)
+@route('/_admin/get/selectedFile')
+def adminGetSelectedFile():
+  return buildResponseObjectSuccess(csvfilename)
+
+# @route('/_admin/dump')
+# def adminDump():
+#   return static_file(csvfilename, root=csvpath)
+
+@route('/_admin/redirect/<new_filename>')
+def redirect(new_filename):
+  if (os.path.isfile(csvpath + new_filename)):
+    read_file(new_filename)
+    return buildResponseObjectSuccessOk()
+  else:
+    return buildResponseObjectError(["File not found"])
+
+# @route('/_admin/reload')
+# def reload():
+#   return '<em>not yet implemented</em>'
 
 @route('/get/<id_value>')
 def getIdValue(id_value):
@@ -162,18 +178,6 @@ def listValuesByFieldFiltered(field, filter, value):
       else:
         values[r[fieldnum]] += 1
   return buildResponseObjectSuccess(values)
-
-@route('/_admin/redirect/<new_filename>')
-def redirect(new_filename):
-  if (os.path.isfile(csvpath + new_filename)):
-    read_file(new_filename)
-    return buildResponseObjectSuccessOk()
-  else:
-    return buildResponseObjectError(["File not found"])
-
-@route('/_admin/reload')
-def reload():
-  return '<em>not yet implemented</em>'
 
 def read_file(fname):
   global csvfields, csvfilename, csvcontents, csvdict
