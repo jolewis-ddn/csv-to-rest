@@ -123,7 +123,6 @@ def getFieldValueTriple(field1, value1, field2, value2, field3, value3):
 
 @route('/count/<field>/<value>')
 def countFieldValue(field, value):
-  result_rows = []
   # Get the # of the field you're searching for
   fieldnum = csvfields.index(field)
   counter = 0
