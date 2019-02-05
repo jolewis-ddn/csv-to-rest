@@ -52,6 +52,21 @@ def getOwnerUS(owner):
     setFilename(response['meta']['filename'])
     return(response['data'])
 
+def getDataFileList():
+    resp = urllib2.urlopen(REST_SERVER_URL + '/_admin/get/filenames').read()
+    list = json.loads(resp)['data']
+    setFilename(json.loads(resp)['meta']['filename'])
+    # print(type(list))
+    return(list)
+
+def getSelectedFile():
+    resp = urllib2.urlopen(REST_SERVER_URL + '/_admin/get/selectedFile').read()
+    list = json.loads(resp)['data']
+    print(list)
+    setFilename(list[0])
+    print("setFilename(" + list[0] + ")")
+    return(list)
+
 def buildStyleTag(entry):
     resp = ""
     if (entry['ScheduleState'] == 'Completed'):
@@ -71,6 +86,57 @@ def formatUS(entry):
 @route('/')
 def home():
     return '<UL><LI><a href="/owners">/owners</a> to list all owners<LI>/owners/Release/<release> to list all owners who have something in that specific release<LI>/US/Owner/<owner> to list all US assigned to <owner></UL>'
+
+def selectLatestFile():
+    url = REST_SERVER_URL + '/_admin/redirect/' + getLatestFile()
+    print(url)
+    resp = urllib2.urlopen(url).read()
+    result = json.loads(resp)
+    setFilename(result['meta']['filename'])
+    return(result['meta']['filename'])
+
+def getLatestFile():
+    FILENAME_TEMPLATE = "IME-US-list-20????????????.csv"
+    US_FILE_PREFIX = "IME-US-list-"
+    FILE_TYPE = ".csv"
+    start_date_pos = 12
+    end_date_pos = 26
+    files = getDataFileList()
+    lastTimestamp = -1
+    for f in files:
+        # Ignore files that don't match IME-US-list-20????????????.csv
+        if (len(f) == len(FILENAME_TEMPLATE) and f[0:12] == US_FILE_PREFIX and f[-4:] == FILE_TYPE):
+            timestamp = int(f[start_date_pos:end_date_pos])
+            if (timestamp > lastTimestamp):
+                lastTimestamp = timestamp
+    if (lastTimestamp > -1):
+        return US_FILE_PREFIX + str(lastTimestamp) + FILE_TYPE
+    else:
+        return "Error - couldn't determine latest file"
+
+@route('/_admin/get/latestFile')
+def adminGetLatestFile():
+    return getLatestFile()
+
+@route('/_admin/get/isLatestFileSelected')
+def adminIsLatestFileSelected():
+    return str(getLatestFile() == getSelectedFile())
+
+@route('/_admin/get/selectedFile')
+def adminGetSelectedFile():
+    return getSelectedFile()
+
+@route('/_admin/get/files')
+def adminGetFiles():
+    response = {}
+    response['data'] = getDataFileList()
+    return response
+
+@route('/_admin/selectLatestFile')
+def adminSelectLatestFile():
+    if getLatestFile() != getSelectedFile():
+        selectLatestFile()
+    return getFilename()
 
 @route('/owners')
 def ownerList():
