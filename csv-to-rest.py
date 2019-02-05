@@ -23,14 +23,19 @@ def home():
 def admin():
   return '<h1>admin page</h1><h2>Filename</h2>' + csvfilename + '<h2># of records</h2>' + str(len(csvcontents) - 1) + "<h2>Fields</h2><UL><LI>" + '</LI><LI>'.join(csvfields) + "</LI></UL>\n" + "<h2>Available data files</h2>" + listDataFiles()
 
-@route('/_admin/showfields')
+@route('/_admin/show/fields')
 def adminShowfields():
   return "<UL><LI>" + '</LI><LI>'.join(csvcontents[0]) + "</LI></UL>"
 
-@route('/_admin/getFields')
-def admingGetFields():
+@route('/_admin/get/fields')
+def adminGetFields():
   response.add_header('Content-type', 'application/json')
   return json.dumps(csvcontents[0])
+
+@route('/_admin/get/filenames')
+def adminGetFilenames():
+  filelist = getDataFiles()
+  return buildResponseObjectSuccess(filelist)
 
 @route('/_admin/dump')
 def adminDump():
@@ -210,11 +215,15 @@ def buildResponseObjectError(errors):
   result['errors'] = errors
   return result
 
-def listDataFiles():
+def getDataFiles():
   global csvpath
   onlyfiles = [f for f in listdir(csvpath) if isfile(join(csvpath, f))]
+  return sorted(onlyfiles)
+
+def listDataFiles():
   result = "<UL>"
-  for f in onlyfiles:
+  filelist = getDataFiles()
+  for f in filelist:
     result += "<LI><A HREF='/_admin/redirect/" + f + "'>" + f + "</A></LI>"
   result += "</UL>"
   return result
