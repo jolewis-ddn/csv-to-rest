@@ -93,27 +93,19 @@ def buildStyleTag(entry):
         resp = "style='color:gray;'"
     return(resp)
 
-def formatUS(entry):
-    # print(entry)
-    result = ''.join(["<span id='", entry['ID'], "' ", buildStyleTag(entry), "><a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", 
-                     entry['ID'],
-                     "' target='_blank'>", entry['ID'], "</a>: ", entry['Name'], " (<a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", entry['Feature'], "' target='_blank'>", entry['Feature'], "</a>/<!-- Rank: ", str(Rally.calculateRank(entry['DragAndDropRank'], 6)), ";-->", entry['Release'], "/", entry['ScheduleState'], "/Est.:", (entry['PlanEstimate'] if entry['PlanEstimate'] else "<em>not estimated</em>"), "/", (entry['Iteration'] if entry['Iteration'] else "<em>No sprint set</em>"), ")", "</span>"])
-    return(result)
-
-# ---------------------------------------#
-# Routes                                 #
-# ---------------------------------------#
-@route('/')
-def home():
-    return '<UL><LI><a href="/owners">/owners</a> to list all owners<LI>/owners/Release/<release> to list all owners who have something in that specific release<LI>/US/Owner/<owner> to list all US assigned to <owner></UL>'
-
 def selectLatestFile():
-    url = REST_SERVER_URL + '/_admin/redirect/' + getLatestFile()
-    print(url)
-    resp = urllib2.urlopen(url).read()
-    result = json.loads(resp)
-    setFilename(result['meta']['filename'])
-    return(result['meta']['filename'])
+    selectedFile = getSelectedFile()
+    if getLatestFile() != selectedFile:
+        url = REST_SERVER_URL + '/_admin/redirect/' + getLatestFile()
+        print(url)
+        resp = urllib2.urlopen(url).read()
+        result = json.loads(resp)
+        setFilename(result['meta']['filename'])
+        print("Latest file is not selected... changing to " + getFilename())
+        return(result['meta']['filename'])
+    else:
+        print("Latest file already selected... not changing..")
+        return(selectedFile)
 
 def getLatestFile():
     FILENAME_TEMPLATE = "IME-US-list-20????????????.csv"
@@ -133,6 +125,20 @@ def getLatestFile():
         return US_FILE_PREFIX + str(lastTimestamp) + FILE_TYPE
     else:
         return "Error - couldn't determine latest file"
+
+def formatUS(entry):
+    # print(entry)
+    result = ''.join(["<span id='", entry['ID'], "' ", buildStyleTag(entry), "><a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", 
+                     entry['ID'],
+                     "' target='_blank'>", entry['ID'], "</a>: ", entry['Name'], " (<a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", entry['Feature'], "' target='_blank'>", entry['Feature'], "</a>/<!-- Rank: ", str(Rally.calculateRank(entry['DragAndDropRank'], 6)), ";-->", entry['Release'], "/", entry['ScheduleState'], "/Est.:", (entry['PlanEstimate'] if entry['PlanEstimate'] else "<em>not estimated</em>"), "/", (entry['Iteration'] if entry['Iteration'] else "<em>No sprint set</em>"), ")", "</span>"])
+    return(result)
+
+# ---------------------------------------#
+# Routes                                 #
+# ---------------------------------------#
+@route('/')
+def home():
+    return '<UL><LI><a href="/owners">/owners</a> to list all owners<LI>/owners/Release/<release> to list all owners who have something in that specific release<LI>/US/Owner/<owner> to list all US assigned to <owner></UL>'
 
 @route('/_admin/get/latestFile')
 def adminGetLatestFile():
@@ -154,8 +160,7 @@ def adminGetFiles():
 
 @route('/_admin/selectLatestFile')
 def adminSelectLatestFile():
-    if getLatestFile() != getSelectedFile():
-        selectLatestFile()
+    selectLatestFile()
     return getFilename()
 
 @route('/owners')
@@ -192,6 +197,7 @@ def usOwnerReport():
 
 @route('/US/OwnerReport/Release/<release>')
 def usOwnerReportByRelease(release):
+    selectLatestFile()
     # Print for each owner
     ownerListResponse = getOwnerListJson(release)
     setFilename(ownerListResponse['meta']['filename'])
@@ -219,6 +225,7 @@ def usOwnerReportByRelease(release):
 
 @route('/US/Owner/<owner>')
 def usByOwner(owner):
+    selectLatestFile()
     getOwnerData_json = getOwnerUS(owner)
     response = "<H1>Item List for " + owner + "</H1>%s<p>Stats: %s</p><p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getStats(getOwnerData_json))
     sortedList = {}
