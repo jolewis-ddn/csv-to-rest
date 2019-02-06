@@ -41,12 +41,8 @@ def adminGetFilenames():
 def adminGetSelectedFile():
   return buildResponseObjectSuccess(csvfilename)
 
-# @route('/_admin/dump')
-# def adminDump():
-#   return static_file(csvfilename, root=csvpath)
-
 @route('/_admin/redirect/<new_filename>')
-def redirect(new_filename):
+def adminRedirect(new_filename):
   if (os.path.isfile(csvpath + new_filename)):
     read_file(new_filename)
     return buildResponseObjectSuccessOk()
