@@ -1,4 +1,4 @@
-from bottle import route, run, template, response, static_file
+from bottle import route, run, template, response, static_file, debug
 import csv
 import json
 import os.path
@@ -20,13 +20,40 @@ INCLUDE_UNASSIGNED = True
 # Functions                              #
 # ---------------------------------------#
 
+def buildHtml(content, header=""):
+    return(''.join([getHtmlHeader(header), content, getHtmlFooter()]))
+
+def getHtmlHeader(header):
+    return('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css"><script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script><script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"></script></head><body>')
+
+def getHtmlFooter():
+    return('</body></html>')
+
+def getClass(perc):
+    if (perc == 0):
+        return('danger')
+    elif (perc < 60):
+        return('warning')
+    elif (perc < 80):
+        return('info')
+    elif (perc < 100):
+        return('success')
+    elif (perc == 100):
+        return('primary')
+    else:
+        return('dark')
+
+def buildStatsTag(label, perc, suffix):
+    # return('<button type="button" class="btn btn-%s">%s <span class="badge badge-light">%s%%</span></button>' % (getClass(perc), label, str(perc)))
+    return('<span class="badge badge-pill badge-%s">%s</span>' % (getClass(perc), ''.join([label, str(perc), suffix])))
+
 def setFilename(fn):
     global _csv_filename
     _csv_filename = fn
 
 def getFilename():
     global _csv_filename
-    print("getFilename() called...")
+    # print("getFilename() called...")
     return(_csv_filename)
 
 def getFilenameBlock():
@@ -82,7 +109,9 @@ def getStats(us_list):
         est_perc = int(round(100*((1.0*estimated)/total_count), 0))
     else:
         est_perc = 0
-    response = "Total est: %s; Estimated %s of %s items (%s%%); Sprint breakdown: " % (str(est_total), str(estimated), str(total_count), str(est_perc))
+    label = "Estimated %s of %s (" % (str(estimated), str(int(total_count)))
+    suffix = "%)"
+    response = "Total est: %s; %s; Sprint breakdown: " % (str(est_total), buildStatsTag(label, est_perc, suffix))
     for sprint in sprints:
         response += "<B>%s</B>: %s; " % (sprint, str(sprints[sprint]))
     return response[:-2]
@@ -221,7 +250,7 @@ def usOwnerReportByRelease(release):
                     response += "<LI>" + sortedList[us] + "</LI>"
                 response += "</UL>"
             response += "</LI>"
-    return response
+    return buildHtml(response)
 
 @route('/US/Owner/<owner>')
 def usByOwner(owner):
@@ -234,6 +263,8 @@ def usByOwner(owner):
     for key in sorted(sortedList):
         response += sortedList[key]
     response += "</UL>"
-    return response
+    return buildHtml(response)
 
+# debug(True)
+# run(host='0.0.0.0', port=8984, reloader=True)
 run(host='0.0.0.0', port=8984)
