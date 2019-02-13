@@ -20,11 +20,63 @@ INCLUDE_UNASSIGNED = True
 # Functions                              #
 # ---------------------------------------#
 
+def getCurrentSprint():
+    return('ime-1.3 Sprint 1'.replace(" ", ""))
+
 def buildHtml(content, header=""):
     return(''.join([getHtmlHeader(header), content, getHtmlFooter()]))
 
+def getLinkbar():
+    return(''.join(['<p>',
+            '<button type="button" id="toggleCompleted" class="linkBarItem btn btn-outline-primary btn-sm" title="Toggle Completed item visibility">Hide Completed<!--i id="toggleCompletedIcon" class="fas fa-check-square"></i--></button>',
+            '<button type="button" id="toggleNoSprint" class="linkBarItem btn btn-outline-primary btn-sm" title="Toggle items that haven''t been assigned to a sprint">Hide No-Sprint-Set<!--i id="toggleNoSprintIcon" class="fas fa-clock"></i--></button>',
+            '</p>']))
+
 def getHtmlHeader(header):
-    return('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css"><script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script><script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"></script></head><body>')
+    return('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css">' +
+        '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>' + 
+        '<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script>' + 
+        '<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"></script>' + 
+        '<script>$(function() {' + 
+            'showCompleted = true; showNoSprint = true;'
+            '$("button#toggleCompleted").click(function() { ' + 
+                'showCompleted = !showCompleted;' +
+                '$("li").show(); showNoSprint = true; ' +
+                '$("button#toggleNoSprint").removeClass("btn-primary").addClass("btn-outline-primary");'
+                '$("button#toggleNoSprint").html("Hide No-Sprint-Set");' +
+                'if (showCompleted) {' +
+                    '$("button#toggleNoSprint").prop("disabled", false); ' +
+                    '$("li.Completed").show(300);' +
+                    '$("button#toggleCompleted").html("Hide Completed");' +
+                    '$("button#toggleCompleted").removeClass("btn-primary").addClass("btn-outline-primary");'
+                '} else {' +
+                    '$("button#toggleNoSprint").prop("disabled", true); ' +
+                    '$("li.Completed").hide(300);' +
+                    '$("button#toggleCompleted").html("Show Completed");' +
+                    '$("button#toggleCompleted").removeClass("btn-outline-primary").addClass("btn-primary");'
+                '}; ' + 
+            '}); ' + 
+            '$("button#toggleNoSprint").click(function() { ' + 
+                'showNoSprint = !showNoSprint;' +
+                '$("li").show(); showCompleted = true;' +
+                '$("button#toggleCompleted").removeClass("btn-primary").addClass("btn-outline-primary");'
+                '$("button#toggleCompleted").html("Hide Completed");' +
+                'if (showNoSprint) {' +
+                    '$("button#toggleCompleted").prop("disabled", false); ' +
+                    '$("li.NoSprintSet").show(300);' +
+                    '$("button#toggleNoSprint").html("Hide No-Sprint-Set");' +
+                    '$("button#toggleNoSprint").removeClass("btn-primary").addClass("btn-outline-primary");'
+                '} else {' +
+                    '$("button#toggleCompleted").prop("disabled", true); ' +
+                    '$("li.NoSprintSet").hide(300);' +
+                    '$("button#toggleNoSprint").html("Show No-Sprint-Set");' +
+                    '$("button#toggleNoSprint").removeClass("btn-outline-primary").addClass("btn-primary");'
+                '}; ' + 
+            '}); ' + 
+            '});</script>' + 
+        '<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">' + 
+        '</head>' + 
+        '<body>')
 
 def getHtmlFooter():
     return('</body></html>')
@@ -42,6 +94,12 @@ def getClass(perc):
         return('primary')
     else:
         return('dark')
+
+def getListItemClass(entry):
+    return(' '.join([entry['ScheduleState'], (entry['Iteration'].replace(" ", "") if entry['Iteration'] else "NoSprintSet")]))
+
+def buildListItem(entry):
+    return(''.join(["<LI ", "class='%s'" % (getListItemClass(entry)), ">", formatUS(entry), "</LI>"]))
 
 def buildStatsTag(label, perc, suffix):
     # return('<button type="button" class="btn btn-%s">%s <span class="badge badge-light">%s%%</span></button>' % (getClass(perc), label, str(perc)))
@@ -230,7 +288,7 @@ def usOwnerReportByRelease(release):
     # Print for each owner
     ownerListResponse = getOwnerListJson(release)
     setFilename(ownerListResponse['meta']['filename'])
-    response = "<H1>Owner Report for %s</H1>%s" % (release, getFilenameBlock())
+    response = "<H1>Owner Report for %s</H1>%s%s" % (release, getFilenameBlock(), getLinkbar())
     response += "<UL>"
     for owner in sorted(ownerListResponse['data']):
         if (INCLUDE_UNASSIGNED or len(owner) > 0):
@@ -244,10 +302,11 @@ def usOwnerReportByRelease(release):
                 response += "<UL>"
                 sortedList = {}
                 for entry in ownerUS:
-                    sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = formatUS(entry)
+                    # sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = formatUS(entry)
+                    sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = entry
                     # response += sortedList[key]
                 for us in sorted(sortedList):
-                    response += "<LI>" + sortedList[us] + "</LI>"
+                    response += buildListItem(sortedList[us])
                 response += "</UL>"
             response += "</LI>"
     return buildHtml(response)
@@ -256,15 +315,15 @@ def usOwnerReportByRelease(release):
 def usByOwner(owner):
     selectLatestFile()
     getOwnerData_json = getOwnerUS(owner)
-    response = "<H1>Item List for " + owner + "</H1>%s<p>Stats: %s</p><p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getStats(getOwnerData_json))
+    response = "<H1>Item List for " + owner + "</H1>%s<p>Stats: %s</p>%s<p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getStats(getOwnerData_json), getLinkbar())
     sortedList = {}
     for entry in getOwnerData_json:
-        sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = "<LI>" + formatUS(entry)
+        sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = buildListItem(entry)
     for key in sorted(sortedList):
         response += sortedList[key]
     response += "</UL>"
     return buildHtml(response)
 
-# debug(True)
-# run(host='0.0.0.0', port=8984, reloader=True)
-run(host='0.0.0.0', port=8984)
+debug(True)
+run(host='0.0.0.0', port=8984, reloader=True)
+# run(host='0.0.0.0', port=8984)
