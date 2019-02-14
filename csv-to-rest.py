@@ -1,20 +1,55 @@
-from bottle import route, run, template, response, static_file
+from bottle import route, run, template, response, static_file, debug
 import csv
 import json
 import os.path
 from os import listdir
 from os.path import isfile, join
+import argparse
 
+# Constants
 LINE_RETURN_COUNT_MAX = 100 # How many records to return in a dump
+CSVPATH_DEFAULT = './data/'
+CSVFILENAME_DEFAULT = 'IME-US-list.csv'
+PORT_DEFAULT = 8983
 
+# Globals
 csvpath = './data/'
-csvfilename = 'IME-US-list.csv'
 csvreader = None
 
 csvfields = []
 csvcontents = []
 csvdict = {}
 
+# Fetch arguments
+parser = argparse.ArgumentParser(description='Expose CSV via REST')
+parser.add_argument('-d', '--datapath', type=str, nargs='?', default=CSVPATH_DEFAULT)
+parser.add_argument('-f', '--filename', type=str, nargs='?', default=CSVFILENAME_DEFAULT)
+parser.add_argument('-p', '--port', type=int, nargs='?', default=PORT_DEFAULT)
+parser.add_argument('-v', '--verbose', help='Verbose output', action='store_true')
+parser.add_argument('-q', '--quiet', help='No output', action='store_true')
+parser.add_argument('-z', '--dev-mode', help='Dev mode - debug mode & reloading', action='store_true')
+args = parser.parse_args()
+
+csvpath = args.datapath
+csvfilename = args.filename
+port = args.port
+verbose = args.verbose
+quiet = args.quiet
+devmode = args.dev_mode
+
+# Don't allow -q and -v
+if verbose and quiet:
+  print("Cannot set both 'verbose' and 'quiet' parameters")
+  exit(101)
+
+# Verify that the path exists
+if (not os.path.exists(os.sep.join([csvpath, csvfilename]))):
+  print("Default file (%s) was not found... Please check the filename and try again..." % (os.sep.join([csvpath, csvfilename])))
+  exit(1)
+else:
+  print("Parsing %s" % (os.sep.join([csvpath, csvfilename])))
+
+# Routes
 @route('/')
 def home():
   return 'home page'
@@ -43,15 +78,11 @@ def adminGetSelectedFile():
 
 @route('/_admin/redirect/<new_filename>')
 def adminRedirect(new_filename):
-  if (os.path.isfile(csvpath + new_filename)):
+  if (os.path.isfile(os.sep.join([csvpath, new_filename]))):
     read_file(new_filename)
     return buildResponseObjectSuccessOk()
   else:
     return buildResponseObjectError(["File not found"])
-
-# @route('/_admin/reload')
-# def reload():
-#   return '<em>not yet implemented</em>'
 
 @route('/get/<id_value>')
 def getIdValue(id_value):
@@ -180,7 +211,7 @@ def read_file(fname):
   csvfilename = fname
   csvcontents = []
   csvdict = {}
-  with open(csvpath + csvfilename, 'r') as csvfile:
+  with open(os.sep.join([csvpath, csvfilename]), 'r') as csvfile:
     csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
     for row in csvreader:
       csvcontents.append(row)
@@ -191,6 +222,7 @@ def buildBasicResponseObject(status, remainder = {}):
   response = {}
   response['meta'] = {}
   response['meta']['status'] = status
+  response['meta']['path'] = csvpath
   response['meta']['filename'] = csvfilename
   response['meta'].update(remainder)
   return(response)
@@ -227,6 +259,18 @@ def listDataFiles():
   result += "</UL>"
   return result
 
-read_file(csvfilename)
+if __name__ == "__main__":
+  if devmode:
+    debug(True)
+    print "In Developer Mode... debug(True)"
 
-run(host='0.0.0.0', port=8983)
+  if verbose or not quiet:
+    print "Data path: %s" % (csvpath)
+    print "Quiet? %s; Verbose? %s" % (quiet, verbose)
+
+  read_file(csvfilename)
+
+  if devmode:
+    run(host='0.0.0.0', port=port, reloader=True)
+  else:
+    run(host='0.0.0.0', port=port)
