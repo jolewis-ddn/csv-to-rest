@@ -9,10 +9,16 @@ import urllib
 import math
 import Rally
 
-# Globals
+# ---------------------------------------#
+# Globals                                #
+# ---------------------------------------#
 _csv_filename = "unset"
-# Constants
-REST_SERVER_URL = 'http://localhost:8983'
+
+# ---------------------------------------#
+# Constants                              #
+# ---------------------------------------#
+REST_SERVER_URL_DE = 'http://localhost:8982'
+REST_SERVER_URL_US = 'http://localhost:8983'
 INCLUDE_UNASSIGNED = True
 # INCLUDE_UNASSIGNED = False
 
@@ -98,8 +104,14 @@ def getClass(perc):
 def getListItemClass(entry):
     return(' '.join([entry['ScheduleState'], (entry['Iteration'].replace(" ", "") if entry['Iteration'] else "NoSprintSet")]))
 
-def buildListItem(entry):
+def buildDEListItem(entry):
+    return(''.join(["<LI ", "class='%s'" % (getListItemClass(entry)), ">", formatDE(entry), "</LI>"]))
+
+def buildUSListItem(entry):
     return(''.join(["<LI ", "class='%s'" % (getListItemClass(entry)), ">", formatUS(entry), "</LI>"]))
+
+def buildListItem(entry):
+    return(buildUSListItem(entry))
 
 def buildStatsTag(label, perc, suffix):
     # return('<button type="button" class="btn btn-%s">%s <span class="badge badge-light">%s%%</span></button>' % (getClass(perc), label, str(perc)))
@@ -118,7 +130,7 @@ def getFilenameBlock():
     return("<p><em>Filename: %s</em></p>" % (getFilename()))
 
 def getOwnerListJson(rel = -1):
-    url = REST_SERVER_URL + '/list/Owner'
+    url = REST_SERVER_URL_US + '/list/Owner'
     if rel != -1:
         url += '/Release/' + urllib.quote(rel)
     resp = urllib2.urlopen(url)
@@ -126,11 +138,22 @@ def getOwnerListJson(rel = -1):
     jsonContent = json.loads(content)
     return(jsonContent)
 
+def getOwnerDE(owner):
+    owner_clean = urllib.quote(owner)
+    if owner_clean == '""':
+        owner_clean = ""
+    base_url = REST_SERVER_URL_DE + '/get/Release/IME%201.3/Owner/'
+    outurl = base_url + owner_clean
+    getOwnerData = urllib2.urlopen(outurl).read()
+    response = json.loads(getOwnerData)
+    setFilename(response['meta']['filename'])
+    return(response['data'])
+
 def getOwnerUS(owner):
     owner_clean = urllib.quote(owner)
     if owner_clean == '""':
         owner_clean = ""
-    base_url = REST_SERVER_URL + '/get/Release/IME%201.3/Owner/'
+    base_url = REST_SERVER_URL_US + '/get/Release/IME%201.3/Owner/'
     outurl = base_url + owner_clean
     getOwnerData = urllib2.urlopen(outurl).read()
     response = json.loads(getOwnerData)
@@ -138,13 +161,13 @@ def getOwnerUS(owner):
     return(response['data'])
 
 def getDataFileList():
-    resp = urllib2.urlopen(REST_SERVER_URL + '/_admin/get/filenames').read()
+    resp = urllib2.urlopen(REST_SERVER_URL_US + '/_admin/get/filenames').read()
     list = json.loads(resp)['data']
     setFilename(json.loads(resp)['meta']['filename'])
     return(list)
 
 def getSelectedFile():
-    resp = urllib2.urlopen(REST_SERVER_URL + '/_admin/get/selectedFile').read()
+    resp = urllib2.urlopen(REST_SERVER_URL_US + '/_admin/get/selectedFile').read()
     list = json.loads(resp)['data']
     setFilename(list[0])
     return(list)
@@ -183,7 +206,7 @@ def buildStyleTag(entry):
 def selectLatestFile():
     selectedFile = getSelectedFile()
     if getLatestFile() != selectedFile:
-        url = REST_SERVER_URL + '/_admin/redirect/' + getLatestFile()
+        url = REST_SERVER_URL_US + '/_admin/redirect/' + getLatestFile()
         print(url)
         resp = urllib2.urlopen(url).read()
         result = json.loads(resp)
@@ -212,6 +235,13 @@ def getLatestFile():
         return US_FILE_PREFIX + str(lastTimestamp) + FILE_TYPE
     else:
         return "Error - couldn't determine latest file"
+
+def formatDE(entry):
+    # print(entry)
+    result = ''.join(["<span id='", entry['ID'], "' ", buildStyleTag(entry), "><a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", 
+                     entry['ID'],
+                     "' target='_blank'>", entry['ID'], "</a>: ", entry['Name'], " (", entry['Release'], "/", entry['ScheduleState'], "/Est.:", (entry['PlanEstimate'] if entry['PlanEstimate'] else "<em>not estimated</em>"), "/", (entry['Iteration'] if entry['Iteration'] else "<em>No sprint set</em>"), ")", "</span>"])
+    return(result)
 
 def formatUS(entry):
     # print(entry)
@@ -267,7 +297,7 @@ def ownerList13(release):
         perc = 100.0*(100*((1.0*getListContent_json[k])/total_count))/100
         # TODO: Fix rounding error... the next line doesn't work
         # perc = math.floor(perc/100)
-        # response += "<LI><A HREF='" + REST_SERVER_URL + "/get/Release/" + release_clean + "/Owner/" + (urllib.quote(k)) + "'>" + k + "</a> (" + str(getListContent_json[k]) + "; " + str(perc) + "%)"
+        # response += "<LI><A HREF='" + REST_SERVER_URL_US + "/get/Release/" + release_clean + "/Owner/" + (urllib.quote(k)) + "'>" + k + "</a> (" + str(getListContent_json[k]) + "; " + str(perc) + "%)"
         response += "<LI><A HREF='/US/Owner/" + (urllib.quote(k)) + "'>" + k + "</a> (" + str(getListContent_json[k]) + "; " + str(perc) + "%)"
     response += "</UL>"
     return response
@@ -319,6 +349,19 @@ def usByOwner(owner):
     sortedList = {}
     for entry in getOwnerData_json:
         sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = buildListItem(entry)
+    for key in sorted(sortedList):
+        response += sortedList[key]
+    response += "</UL>"
+    return buildHtml(response)
+
+@route('/DE/Owner/<owner>')
+def deByOwner(owner):
+    selectLatestFile()
+    getOwnerData_json = getOwnerDE(owner)
+    response = "<H1>Defect List for " + owner + "</H1>%s<p>Stats: %s</p>%s<p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getStats(getOwnerData_json), getLinkbar())
+    sortedList = {}
+    for entry in getOwnerData_json:
+        sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = buildDEListItem(entry)
     for key in sorted(sortedList):
         response += sortedList[key]
     response += "</UL>"
