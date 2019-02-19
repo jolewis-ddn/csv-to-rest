@@ -34,8 +34,8 @@ def buildHtml(content, header=""):
 
 def getLinkbar():
     return(''.join(['<p>',
-            '<button type="button" id="toggleCompAcc" class="linkBarItem btn btn-outline-primary btn-sm" data-toggle="tooltip" title="Toggle Completed/Accepted item visibility">Hide Completed/Accepted<!--i id="toggleCompAccIcon" class="fas fa-check-square"></i--></button>',
-            '<button type="button" id="toggleNoSprint" class="linkBarItem btn btn-outline-primary btn-sm" data-toggle="tooltip" title="Show only items that have a sprint set">Hide No-Sprint-Set<!--i id="toggleNoSprintIcon" class="fas fa-clock"></i--></button>',
+            '<button type="button" id="toggleCompAcc" class="linkBarItem btn btn-outline-primary btn-sm" title="Toggle Completed/Accepted item visibility">Hide Completed/Accepted<!--i id="toggleCompAccIcon" class="fas fa-check-square"></i--></button>',
+            '<button type="button" id="toggleNoSprint" class="linkBarItem btn btn-outline-primary btn-sm" title="Show only items that have a sprint set">Hide No-Sprint-Set<!--i id="toggleNoSprintIcon" class="fas fa-clock"></i--></button>',
             '</p>']))
 
 def getHtmlHeader(header):
@@ -44,19 +44,22 @@ def getHtmlHeader(header):
         '<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script>' + 
         '<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"></script>' + 
         '<script>$(function() {' + 
-            'showCompAcc = true; showNoSprint = 0;'
+            'showCompAcc = true; showNoSprint = 0;' +
+            '$("div#filterBlock").html("<EM>Filter</EM>: Showing all items"); ' +
             '$("button#toggleCompAcc").click(function() { ' + 
                 'showCompAcc = !showCompAcc;' +
                 '$("li").removeClass("liHide").addClass("liShow").show(); showNoSprint = 0; ' +
                 '$("button#toggleNoSprint").removeClass("btn-primary").addClass("btn-outline-primary");'
                 '$("button#toggleNoSprint").html("Show Only Sprint-Set");' +
                 'if (showCompAcc) {' +
+                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing all items"); ' +
                     '$("button#toggleNoSprint").prop("disabled", false); ' +
                     '$("li.ss_Completed").removeClass("liHide").addClass("liShow"); ' +
                     '$("li.ss_Accepted").removeClass("liHide").addClass("liShow"); ' +
                     '$("button#toggleCompAcc").html("Hide Completed/Accepted");' +
                     '$("button#toggleCompAcc").removeClass("btn-primary").addClass("btn-outline-primary");'
                 '} else {' +
+                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing only incomplete items"); ' +
                     '$("button#toggleNoSprint").prop("disabled", true); ' +
                     '$("li.ss_Completed").removeClass("liShow").addClass("liHide"); ' +
                     '$("li.ss_Accepted").removeClass("liShow").addClass("liHide"); ' +
@@ -71,19 +74,22 @@ def getHtmlHeader(header):
                 '$("button#toggleCompAcc").html("Hide Completed/Accepted");' +
                 'if (showNoSprint >= 2) { showNoSprint = 0; } else { showNoSprint += 1; };' +
                 'if (showNoSprint == 0) {' +
+                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing all items"); ' +
                     '$("button#toggleCompAcc").prop("disabled", false); ' +
                     '$("li.NoSprintSet").removeClass("liHide").addClass("liShow"); ' +
                     '$("button#toggleNoSprint").html("Show Only Sprint-Set"); ' +
                     '$("button#toggleNoSprint").attr("title", "Show only items that have a sprint set"); ' +
                 '} else if (showNoSprint == 1) {' + 
+                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing only items that have a sprint set"); ' +
                     '$("button#toggleCompAcc").prop("disabled", true); ' +
                     '$("li.NoSprintSet").removeClass("liShow").addClass("liHide");' +
                     '$("button#toggleNoSprint").html("Show Only No-Sprint-Set"); ' +
                     '$("button#toggleNoSprint").attr("title", "Show only items that do NOT have a sprint set"); ' +
                 '} else {' +
+                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing only items that do NOT have a sprint set"); ' +
                     '$("button#toggleCompAcc").prop("disabled", true); ' +
-                    '$("li").addClass("liHide").removeClass("liShow");' +
-                    '$("li.NoSprintSet").removeClass("liHide").addClass("liShow");' +
+                    '$("li").addClass("liShow").removeClass("liHide");' +
+                    '$("li.SprintSet").addClass("liHide").removeClass("liShow");' +
                     '$("button#toggleNoSprint").html("Disable Sprint Filter"); ' +
                     '$("button#toggleNoSprint").attr("title", "Show all items (i.e. disable filter)"); ' +
                 '}; ' + 
@@ -112,7 +118,7 @@ def getClass(perc):
         return('dark')
 
 def getListItemClass(entry):
-    return(' '.join(['ss_' + entry['ScheduleState'], (entry['Iteration'].replace(" ", "") if entry['Iteration'] else "NoSprintSet")]))
+    return(' '.join(['ss_' + entry['ScheduleState'], (' '.join([entry['Iteration'].replace(" ", ""), "SprintSet"]) if entry['Iteration'] else "NoSprintSet")]))
 
 def buildDEListItem(entry):
     return(''.join(["<LI ", "class='%s'" % (getListItemClass(entry)), ">", formatDE(entry), "</LI>"]))
@@ -138,6 +144,9 @@ def getFilename():
 
 def getFilenameBlock():
     return("<p><em>Filename: %s</em></p>" % (getFilename()))
+
+def getFilterBlock():
+    return("<div id='filterBlock'></div>")
 
 def getOwnerListJson(rel = -1):
     url = REST_SERVER_URL_US + '/list/Owner'
@@ -328,7 +337,7 @@ def usOwnerReportByRelease(release):
     # Print for each owner
     ownerListResponse = getOwnerListJson(release)
     setFilename(ownerListResponse['meta']['filename'])
-    response = "<H1>Owner Report for %s</H1>%s%s" % (release, getFilenameBlock(), getLinkbar())
+    response = "<H1>Owner Report for %s</H1>%s<P>%s</P>%s" % (release, getFilenameBlock(), getFilterBlock(), getLinkbar())
     response += "<UL>"
     for owner in sorted(ownerListResponse['data']):
         if (INCLUDE_UNASSIGNED or len(owner) > 0):
@@ -355,7 +364,7 @@ def usOwnerReportByRelease(release):
 def usByOwner(owner):
     selectLatestFile()
     getOwnerData_json = getOwnerUS(owner)
-    response = "<H1>Item List for " + owner + "</H1>%s<p>Stats: %s</p>%s<p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getStats(getOwnerData_json), getLinkbar())
+    response = "<H1>Item List for " + owner + "</H1>%s<P>%s</P><p>Stats: %s</p>%s<p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getFilterBlock(), getStats(getOwnerData_json), getLinkbar())
     sortedList = {}
     for entry in getOwnerData_json:
         sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = buildListItem(entry)
@@ -368,7 +377,7 @@ def usByOwner(owner):
 def deByOwner(owner):
     selectLatestFile()
     getOwnerData_json = getOwnerDE(owner)
-    response = "<H1>Defect List for " + owner + "</H1>%s<p>Stats: %s</p>%s<p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getStats(getOwnerData_json), getLinkbar())
+    response = "<H1>Defect List for " + owner + "</H1>%s<P>%s</P><p>Stats: %s</p>%s<p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getFilterBlock(), getStats(getOwnerData_json), getLinkbar())
     sortedList = {}
     for entry in getOwnerData_json:
         sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = buildDEListItem(entry)
@@ -377,6 +386,6 @@ def deByOwner(owner):
     response += "</UL>"
     return buildHtml(response)
 
-debug(True)
-run(host='0.0.0.0', port=8984, reloader=True)
-# run(host='0.0.0.0', port=8984)
+# debug(True)
+# run(host='0.0.0.0', port=8984, reloader=True)
+run(host='0.0.0.0', port=8984)
