@@ -34,8 +34,8 @@ def buildHtml(content, header=""):
 
 def getLinkbar():
     return(''.join(['<p>',
-            '<button type="button" id="toggleCompleted" class="linkBarItem btn btn-outline-primary btn-sm" title="Toggle Completed item visibility">Hide Completed<!--i id="toggleCompletedIcon" class="fas fa-check-square"></i--></button>',
-            '<button type="button" id="toggleNoSprint" class="linkBarItem btn btn-outline-primary btn-sm" title="Toggle items that haven''t been assigned to a sprint">Hide No-Sprint-Set<!--i id="toggleNoSprintIcon" class="fas fa-clock"></i--></button>',
+            '<button type="button" id="toggleCompAcc" class="linkBarItem btn btn-outline-primary btn-sm" data-toggle="tooltip" title="Toggle Completed/Accepted item visibility">Hide Completed/Accepted<!--i id="toggleCompAccIcon" class="fas fa-check-square"></i--></button>',
+            '<button type="button" id="toggleNoSprint" class="linkBarItem btn btn-outline-primary btn-sm" data-toggle="tooltip" title="Show only items that have a sprint set">Hide No-Sprint-Set<!--i id="toggleNoSprintIcon" class="fas fa-clock"></i--></button>',
             '</p>']))
 
 def getHtmlHeader(header):
@@ -44,42 +44,52 @@ def getHtmlHeader(header):
         '<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script>' + 
         '<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"></script>' + 
         '<script>$(function() {' + 
-            'showCompleted = true; showNoSprint = true;'
-            '$("button#toggleCompleted").click(function() { ' + 
-                'showCompleted = !showCompleted;' +
-                '$("li").show(); showNoSprint = true; ' +
+            'showCompAcc = true; showNoSprint = 0;'
+            '$("button#toggleCompAcc").click(function() { ' + 
+                'showCompAcc = !showCompAcc;' +
+                '$("li").removeClass("liHide").addClass("liShow").show(); showNoSprint = 0; ' +
                 '$("button#toggleNoSprint").removeClass("btn-primary").addClass("btn-outline-primary");'
-                '$("button#toggleNoSprint").html("Hide No-Sprint-Set");' +
-                'if (showCompleted) {' +
+                '$("button#toggleNoSprint").html("Show Only Sprint-Set");' +
+                'if (showCompAcc) {' +
                     '$("button#toggleNoSprint").prop("disabled", false); ' +
-                    '$("li.Completed").show(300);' +
-                    '$("button#toggleCompleted").html("Hide Completed");' +
-                    '$("button#toggleCompleted").removeClass("btn-primary").addClass("btn-outline-primary");'
+                    '$("li.ss_Completed").removeClass("liHide").addClass("liShow"); ' +
+                    '$("li.ss_Accepted").removeClass("liHide").addClass("liShow"); ' +
+                    '$("button#toggleCompAcc").html("Hide Completed/Accepted");' +
+                    '$("button#toggleCompAcc").removeClass("btn-primary").addClass("btn-outline-primary");'
                 '} else {' +
                     '$("button#toggleNoSprint").prop("disabled", true); ' +
-                    '$("li.Completed").hide(300);' +
-                    '$("button#toggleCompleted").html("Show Completed");' +
-                    '$("button#toggleCompleted").removeClass("btn-outline-primary").addClass("btn-primary");'
+                    '$("li.ss_Completed").removeClass("liShow").addClass("liHide"); ' +
+                    '$("li.ss_Accepted").removeClass("liShow").addClass("liHide"); ' +
+                    '$("button#toggleCompAcc").html("Show Completed/Accepted");' +
+                    '$("button#toggleCompAcc").removeClass("btn-outline-primary").addClass("btn-primary");'
                 '}; ' + 
+                '$("li.liHide").hide(300);' +
             '}); ' + 
             '$("button#toggleNoSprint").click(function() { ' + 
-                'showNoSprint = !showNoSprint;' +
-                '$("li").show(); showCompleted = true;' +
-                '$("button#toggleCompleted").removeClass("btn-primary").addClass("btn-outline-primary");'
-                '$("button#toggleCompleted").html("Hide Completed");' +
-                'if (showNoSprint) {' +
-                    '$("button#toggleCompleted").prop("disabled", false); ' +
-                    '$("li.NoSprintSet").show(300);' +
-                    '$("button#toggleNoSprint").html("Hide No-Sprint-Set");' +
-                    '$("button#toggleNoSprint").removeClass("btn-primary").addClass("btn-outline-primary");'
+                '$("li").removeClass("liHide").addClass("liShow").show(); showCompAcc = true;' +
+                '$("button#toggleCompAcc").removeClass("btn-primary").addClass("btn-outline-primary");'
+                '$("button#toggleCompAcc").html("Hide Completed/Accepted");' +
+                'if (showNoSprint >= 2) { showNoSprint = 0; } else { showNoSprint += 1; };' +
+                'if (showNoSprint == 0) {' +
+                    '$("button#toggleCompAcc").prop("disabled", false); ' +
+                    '$("li.NoSprintSet").removeClass("liHide").addClass("liShow"); ' +
+                    '$("button#toggleNoSprint").html("Show Only Sprint-Set"); ' +
+                    '$("button#toggleNoSprint").attr("title", "Show only items that have a sprint set"); ' +
+                '} else if (showNoSprint == 1) {' + 
+                    '$("button#toggleCompAcc").prop("disabled", true); ' +
+                    '$("li.NoSprintSet").removeClass("liShow").addClass("liHide");' +
+                    '$("button#toggleNoSprint").html("Show Only No-Sprint-Set"); ' +
+                    '$("button#toggleNoSprint").attr("title", "Show only items that do NOT have a sprint set"); ' +
                 '} else {' +
-                    '$("button#toggleCompleted").prop("disabled", true); ' +
-                    '$("li.NoSprintSet").hide(300);' +
-                    '$("button#toggleNoSprint").html("Show No-Sprint-Set");' +
-                    '$("button#toggleNoSprint").removeClass("btn-outline-primary").addClass("btn-primary");'
+                    '$("button#toggleCompAcc").prop("disabled", true); ' +
+                    '$("li").addClass("liHide").removeClass("liShow");' +
+                    '$("li.NoSprintSet").removeClass("liHide").addClass("liShow");' +
+                    '$("button#toggleNoSprint").html("Disable Sprint Filter"); ' +
+                    '$("button#toggleNoSprint").attr("title", "Show all items (i.e. disable filter)"); ' +
                 '}; ' + 
+                '$("li.liHide").hide(300);' + "\n" +
             '}); ' + 
-            '});</script>' + 
+            '}); $(document).ready(function(){ $(' + "'" + '[data-toggle="tooltip"]' + "'" + ').tooltip(); });</script>' + 
         '<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">' + 
         '</head>' + 
         '<body>')
@@ -102,7 +112,7 @@ def getClass(perc):
         return('dark')
 
 def getListItemClass(entry):
-    return(' '.join([entry['ScheduleState'], (entry['Iteration'].replace(" ", "") if entry['Iteration'] else "NoSprintSet")]))
+    return(' '.join(['ss_' + entry['ScheduleState'], (entry['Iteration'].replace(" ", "") if entry['Iteration'] else "NoSprintSet")]))
 
 def buildDEListItem(entry):
     return(''.join(["<LI ", "class='%s'" % (getListItemClass(entry)), ">", formatDE(entry), "</LI>"]))
@@ -199,7 +209,7 @@ def getStats(us_list):
 
 def buildStyleTag(entry):
     resp = ""
-    if (entry['ScheduleState'] == 'Completed'):
+    if ((entry['ScheduleState'] == 'Completed') or (entry['ScheduleState'] == 'Accepted')):
         resp = "style='color:gray;'"
     return(resp)
 
