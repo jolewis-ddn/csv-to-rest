@@ -8,6 +8,7 @@ import urllib2
 import urllib
 import math
 import Rally
+import subprocess
 
 # ---------------------------------------#
 # Globals                                #
@@ -385,6 +386,11 @@ def deByOwner(owner):
         response += sortedList[key]
     response += "</UL>"
     return buildHtml(response)
+
+@route('/updateDataFile')
+def updateDataFile():
+    subprocess.call(["python", "/home/jolewis/code/python/get-IME-US-list.py"], cwd="/home/jolewis/code/csv-to-rest/data")
+    return buildHtml("CSV file update completed!")
 
 # debug(True)
 # run(host='0.0.0.0', port=8984, reloader=True)
