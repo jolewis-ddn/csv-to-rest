@@ -9,6 +9,8 @@ import urllib
 import math
 import Rally
 import subprocess
+import datetime
+from datetime import datetime, timedelta
 
 # ---------------------------------------#
 # Globals                                #
@@ -134,6 +136,19 @@ def buildStatsTag(label, perc, suffix):
     # return('<button type="button" class="btn btn-%s">%s <span class="badge badge-light">%s%%</span></button>' % (getClass(perc), label, str(perc)))
     return('<span class="badge badge-pill badge-%s">%s</span>' % (getClass(perc), ''.join([label, str(perc), suffix])))
 
+def parseFilename(filename):
+    parts = filename.split('-')
+    dateStr = parts[3][:-4]
+    if (dateStr[:4] == "2019"):
+        # print(int(dateStr[:4]), int(dateStr[4:6]), int(dateStr[6:8]), int(dateStr[8:10]), int(dateStr[10:12]), int(dateStr[12:14]))
+        dateVal = datetime(int(dateStr[:4]), int(dateStr[4:6]), int(dateStr[6:8]), int(dateStr[8:10]), int(dateStr[10:12]), int(dateStr[12:14]))
+        print(dateVal)
+        # return(str(dateVal.strftime('%c')))
+        # return(dateVal.strftime('%A %b %d, %I:%M %p'))
+        return(dateVal)
+    else:
+        return("")
+
 def setFilename(fn):
     global _csv_filename
     _csv_filename = fn
@@ -144,7 +159,11 @@ def getFilename():
     return(_csv_filename)
 
 def getFilenameBlock():
-    return("<p><em>Filename: %s</em></p>" % (getFilename()))
+    filename = getFilename()
+    dateBlock = parseFilename(filename)
+    hoursAgo = ((datetime.now().replace(microsecond=0)-dateBlock).seconds/60)/60
+    minutesAgo = ((datetime.now().replace(microsecond=0)-dateBlock).seconds/60)%60
+    return("<p><em>Filename: %s (%s; %s hour(s) %s minute(s) ago)</em></p>" % (filename, dateBlock.strftime('%A %b %d, %I:%M %p'), str(hoursAgo), str(minutesAgo)))
 
 def getFilterBlock():
     return("<div id='filterBlock'></div>")
