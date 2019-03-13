@@ -25,6 +25,33 @@ REST_SERVER_URL_US = 'http://localhost:8983'
 INCLUDE_UNASSIGNED = True
 # INCLUDE_UNASSIGNED = False
 
+# TODO: Fix this to a dynamic assignment
+featurePriorities = {
+    "F2772": "P1",
+    "F2766": "P2",
+    "F2765": "",
+    "F2763": "",
+    "F2749": "P0",
+    "F2748": "P0",
+    "F2738": "P1",
+    "F2700": "P1",
+    "F2695": "P2",
+    "F2694": "P0",
+    "F2658": "P2",
+    "F2623": "P1",
+    "F2615": "P2",
+    "F2614": "P1",
+    "F2613": "P1",
+    "F2612": "P2",
+    "F2611": "Out",
+    "F2610": "P0",
+    "F2609": "P1",
+    "F2544": "P1",
+    "F2447": "P0",
+    "F2411": "Out",
+    "F1289": "Out"
+}
+
 # ---------------------------------------#
 # Functions                              #
 # ---------------------------------------#
@@ -99,6 +126,8 @@ def getHtmlHeader(header):
                 '$("li.liHide").hide(300);' + "\n" +
             '}); ' + 
             '}); $(document).ready(function(){ $(' + "'" + '[data-toggle="tooltip"]' + "'" + ').tooltip(); });</script>' + 
+            "<style>th, td { text-align: center; }\n.ownername { text-align: right; width: 200px; }\n" +
+            "td.ownercount { width: 50px; } </style>" +
         '<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">' + 
         '</head>' + 
         '<body>')
@@ -378,6 +407,47 @@ def usOwnerReportByRelease(release):
                     response += buildListItem(sortedList[us])
                 response += "</UL>"
             response += "</LI>"
+    return buildHtml(response)
+
+@route('/US/Assignment/Release/<release>')
+def usAssignmentsByRelease(release):
+    selectLatestFile()
+    # Print for each owner
+    ownerListResponse = getOwnerListJson(release)
+    setFilename(ownerListResponse['meta']['filename'])
+    response = "<H1>Assignment Report for %s</H1>%s" % (release, getFilenameBlock())
+    response += "<TABLE><THEAD><TR><TH class='ownername'>Owner</TH>"
+    priorities = ['Total', 'P0', 'P1', 'P2', 'P3', 'Other']
+    for priority in (priorities):
+        response += "<TH>%s</TH>" % (priority)
+    response += "</TR></THEAD><TBODY>"
+    for owner in sorted(ownerListResponse['data']):
+        if (INCLUDE_UNASSIGNED or len(owner) > 0):
+            if owner == '':
+                owner = '""'
+            ownerUS = getOwnerUS(owner)
+            owner_clean = owner if owner != '""' else "Blank"
+            response += "<TR><TD class='ownername'>%s</TD>" % (owner_clean)
+            response += "<TD class='ownercount'>"
+            # print("Fetching US for owner: " + owner + "!")
+            if len(ownerUS) > 0:
+                response += str(len(ownerUS)) + "</TD>"
+                countByPriority = dict.fromkeys(['P0', 'P1', 'P2', 'P3', 'Other'], 0)
+                for us in ownerUS:
+                    if (us['Feature'] in featurePriorities and featurePriorities[us['Feature']] in countByPriority):
+                        countByPriority[featurePriorities[us['Feature']]] += 1
+                    else:
+                        print "ERR: Feature not in priorities list: %s " % (us['Feature'])
+                        countByPriority['Other'] += 1
+                # TODO: Fix this hack! make the printout in a loop
+                response += "<TD class='ownercount'>%s</TD><TD class='ownercount'>%s</TD><TD class='ownercount'>%s</TD><TD class='ownercount'>%s</TD><TD class='ownercount'>%s</TD>" % (str(countByPriority['P0']), str(countByPriority['P1']), str(countByPriority['P2']), str(countByPriority['P3']), str(countByPriority['Other']))
+                # for priority in sorted(countByPriority):
+                    # if (priority in countByPriority):
+                        # response += "<TD>%s = %s</TD>" % (priority, str(countByPriority[priority]))
+            else:
+                response += 0
+            response += "</TR>"
+    response += "</TBODY></TABLE>"
     return buildHtml(response)
 
 @route('/US/Owner/<owner>')
