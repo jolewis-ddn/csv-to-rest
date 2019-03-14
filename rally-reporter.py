@@ -427,7 +427,7 @@ def usAssignmentsByRelease(release):
                 owner = '""'
             ownerUS = getOwnerUS(owner)
             owner_clean = owner if owner != '""' else "Blank"
-            response += "<TR><TD class='ownername'>%s</TD>" % (owner_clean)
+            response += "<TR><TD class='ownername'><A HREF='http://prog-mgmt-apps:8984/US/Owner/%s'>%s</A></TD>" % (owner, owner_clean)
             response += "<TD class='ownercount'>"
             # print("Fetching US for owner: " + owner + "!")
             if len(ownerUS) > 0:
