@@ -1,4 +1,4 @@
-from bottle import route, run, template, response, static_file, debug
+from bottle import route, run, template, request, response, static_file, debug
 import csv
 import json
 import os.path
@@ -25,15 +25,18 @@ REST_SERVER_URL_US = 'http://localhost:8983'
 INCLUDE_UNASSIGNED = True
 # INCLUDE_UNASSIGNED = False
 
+PRIORITY_LIST = ['P0', 'P1', 'P2', 'P3', 'Other']
+
 # TODO: Fix this to a dynamic assignment
 featurePriorities = {
     "F2772": "P1",
     "F2766": "P2",
     "F2765": "",
-    "F2763": "",
+    "F2763": "P2",
     "F2749": "P0",
     "F2748": "P0",
     "F2738": "P1",
+    "F2737": "P2",
     "F2700": "P1",
     "F2695": "P2",
     "F2694": "P0",
@@ -49,7 +52,8 @@ featurePriorities = {
     "F2544": "P1",
     "F2447": "P0",
     "F2411": "Out",
-    "F1289": "Out"
+    "F1289": "Out",
+    "F1988": "P2",
 }
 
 # ---------------------------------------#
@@ -73,63 +77,65 @@ def getHtmlHeader(header):
         '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>' + 
         '<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"></script>' + 
         '<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"></script>' + 
-        '<script>$(function() {' + 
-            'showCompAcc = true; showNoSprint = 0;' +
-            '$("div#filterBlock").html("<EM>Filter</EM>: Showing all items"); ' +
-            '$("button#toggleCompAcc").click(function() { ' + 
-                'showCompAcc = !showCompAcc;' +
-                '$("li").removeClass("liHide").addClass("liShow").show(); showNoSprint = 0; ' +
+        "<script>$(function() {\n"
+            "$('[data-toggle=\"tooltip\"]').tooltip();\n"
+            'showCompAcc = true; showNoSprint = 0;'
+            '$("div#filterBlock").html("<EM>Filter</EM>: Showing all items"); '
+            '$("button#toggleCompAcc").click(function() { '
+                'showCompAcc = !showCompAcc;'
+                '$("li").removeClass("liHide").addClass("liShow").show(); showNoSprint = 0; '
                 '$("button#toggleNoSprint").removeClass("btn-primary").addClass("btn-outline-primary");'
-                '$("button#toggleNoSprint").html("Show Only Sprint-Set");' +
-                'if (showCompAcc) {' +
-                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing all items"); ' +
-                    '$("button#toggleNoSprint").prop("disabled", false); ' +
-                    '$("li.ss_Completed").removeClass("liHide").addClass("liShow"); ' +
-                    '$("li.ss_Accepted").removeClass("liHide").addClass("liShow"); ' +
-                    '$("button#toggleCompAcc").html("Hide Completed/Accepted");' +
+                '$("button#toggleNoSprint").html("Show Only Sprint-Set");'
+                'if (showCompAcc) {'
+                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing all items"); '
+                    '$("button#toggleNoSprint").prop("disabled", false); '
+                    '$("li.ss_Completed").removeClass("liHide").addClass("liShow"); '
+                    '$("li.ss_Accepted").removeClass("liHide").addClass("liShow"); '
+                    '$("button#toggleCompAcc").html("Hide Completed/Accepted");'
                     '$("button#toggleCompAcc").removeClass("btn-primary").addClass("btn-outline-primary");'
-                '} else {' +
-                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing only incomplete items"); ' +
-                    '$("button#toggleNoSprint").prop("disabled", true); ' +
-                    '$("li.ss_Completed").removeClass("liShow").addClass("liHide"); ' +
-                    '$("li.ss_Accepted").removeClass("liShow").addClass("liHide"); ' +
-                    '$("button#toggleCompAcc").html("Show Completed/Accepted");' +
+                '} else {'
+                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing only incomplete items"); '
+                    '$("button#toggleNoSprint").prop("disabled", true); '
+                    '$("li.ss_Completed").removeClass("liShow").addClass("liHide"); '
+                    '$("li.ss_Accepted").removeClass("liShow").addClass("liHide"); '
+                    '$("button#toggleCompAcc").html("Show Completed/Accepted");'
                     '$("button#toggleCompAcc").removeClass("btn-outline-primary").addClass("btn-primary");'
-                '}; ' + 
-                '$("li.liHide").hide(300);' +
-            '}); ' + 
-            '$("button#toggleNoSprint").click(function() { ' + 
-                '$("li").removeClass("liHide").addClass("liShow").show(); showCompAcc = true;' +
+                '}; '
+                '$("li.liHide").hide(300);'
+            '}); '
+            '$("button#toggleNoSprint").click(function() { '
+                '$("li").removeClass("liHide").addClass("liShow").show(); showCompAcc = true;'
                 '$("button#toggleCompAcc").removeClass("btn-primary").addClass("btn-outline-primary");'
-                '$("button#toggleCompAcc").html("Hide Completed/Accepted");' +
-                'if (showNoSprint >= 2) { showNoSprint = 0; } else { showNoSprint += 1; };' +
-                'if (showNoSprint == 0) {' +
-                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing all items"); ' +
-                    '$("button#toggleCompAcc").prop("disabled", false); ' +
-                    '$("li.NoSprintSet").removeClass("liHide").addClass("liShow"); ' +
-                    '$("button#toggleNoSprint").html("Show Only Sprint-Set"); ' +
-                    '$("button#toggleNoSprint").attr("title", "Show only items that have a sprint set"); ' +
-                '} else if (showNoSprint == 1) {' + 
-                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing only items that have a sprint set"); ' +
-                    '$("button#toggleCompAcc").prop("disabled", true); ' +
-                    '$("li.NoSprintSet").removeClass("liShow").addClass("liHide");' +
-                    '$("button#toggleNoSprint").html("Show Only No-Sprint-Set"); ' +
-                    '$("button#toggleNoSprint").attr("title", "Show only items that do NOT have a sprint set"); ' +
-                '} else {' +
-                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing only items that do NOT have a sprint set"); ' +
-                    '$("button#toggleCompAcc").prop("disabled", true); ' +
-                    '$("li").addClass("liShow").removeClass("liHide");' +
-                    '$("li.SprintSet").addClass("liHide").removeClass("liShow");' +
-                    '$("button#toggleNoSprint").html("Disable Sprint Filter"); ' +
-                    '$("button#toggleNoSprint").attr("title", "Show all items (i.e. disable filter)"); ' +
-                '}; ' + 
-                '$("li.liHide").hide(300);' + "\n" +
-            '}); ' + 
-            '}); $(document).ready(function(){ $(' + "'" + '[data-toggle="tooltip"]' + "'" + ').tooltip(); });</script>' + 
-            "<style>th, td { text-align: center; }\n.ownername { text-align: right; width: 200px; }\n" +
-            "td.ownercount { width: 50px; } </style>" +
-        '<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">' + 
-        '</head>' + 
+                '$("button#toggleCompAcc").html("Hide Completed/Accepted");'
+                'if (showNoSprint >= 2) { showNoSprint = 0; } else { showNoSprint += 1; };'
+                'if (showNoSprint == 0) {'
+                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing all items"); '
+                    '$("button#toggleCompAcc").prop("disabled", false); '
+                    '$("li.NoSprintSet").removeClass("liHide").addClass("liShow"); '
+                    '$("button#toggleNoSprint").html("Show Only Sprint-Set"); '
+                    '$("button#toggleNoSprint").attr("title", "Show only items that have a sprint set"); '
+                '} else if (showNoSprint == 1) {'
+                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing only items that have a sprint set"); '
+                    '$("button#toggleCompAcc").prop("disabled", true); '
+                    '$("li.NoSprintSet").removeClass("liShow").addClass("liHide");'
+                    '$("button#toggleNoSprint").html("Show Only No-Sprint-Set"); '
+                    '$("button#toggleNoSprint").attr("title", "Show only items that do NOT have a sprint set"); '
+                '} else {'
+                    '$("div#filterBlock").html("<EM>Filter</EM>: Showing only items that do NOT have a sprint set"); '
+                    '$("button#toggleCompAcc").prop("disabled", true); '
+                    '$("li").addClass("liShow").removeClass("liHide");'
+                    '$("li.SprintSet").addClass("liHide").removeClass("liShow");'
+                    '$("button#toggleNoSprint").html("Disable Sprint Filter"); '
+                    '$("button#toggleNoSprint").attr("title", "Show all items (i.e. disable filter)"); '
+                '}; '
+                '$("li.liHide").hide(300);' + "\n"
+            '}); '
+            '}); '
+            "</script>\n"
+            "<style>th, td { text-align: center; }\n.ownername { text-align: right; width: 200px; }\n"
+            "td.ownercount { width: 50px; }\n.tooltip-inner { max-width: 500px; width: 350px; text-align: left; padding: 5px; background-color: black; margin: 5px; } </style>"
+        '<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">'
+        '</head>'
         '<body>')
 
 def getHtmlFooter():
@@ -409,46 +415,87 @@ def usOwnerReportByRelease(release):
             response += "</LI>"
     return buildHtml(response)
 
+def includeItem(us, filter):
+    if ("ScheduleState" in us.keys()):
+        print(filter, us['ID'], us['Name'], us['ScheduleState'])
+        if (filter[:1] == '!') and (us['ScheduleState'] != filter[1:]):
+            print("NEGATIVE filter match: %s and %s from %s remainder %s" % (us['ScheduleState'], filter, filter[:1], filter[1:]))
+            return(True)
+        elif (us['ScheduleState'] == filter):
+            print("filter match: %s and %s" % (us['ScheduleState'], filter))
+            return(True)
+        else:
+            return(False)
+    else:
+        return(True)
+
 @route('/US/Assignment/Release/<release>')
 def usAssignmentsByRelease(release):
     selectLatestFile()
+    showAllLink = "<H4><small><A HREF='?'>Show all</A></small></H4>"
+    showAllButAcceptedLink = "<H4><small><A HREF='?filter=!Accepted'>Show all <em>except Accepted</em></A></small></H4>"
     # Print for each owner
     ownerListResponse = getOwnerListJson(release)
     setFilename(ownerListResponse['meta']['filename'])
     response = "<H1>Assignment Report for %s</H1>%s" % (release, getFilenameBlock())
+    if (request.query.filter):
+        filter = request.query.filter
+        if (filter[:1] == "!"):
+            filter = "everything <em>except</em> '%s'" % (request.query.filter[1:])
+        else:
+            filter = "'%s'" % (filter)
+        response += "<H2><small>Showing <bold>%s</bold></small></H2>%s" % (filter, showAllLink)
+    else:
+        response += "<H2><small><bold>No</bold> Filter set</small></H2>" + showAllButAcceptedLink
     response += "<TABLE><THEAD><TR><TH class='ownername'>Owner</TH>"
-    priorities = ['Total', 'P0', 'P1', 'P2', 'P3', 'Other']
+    priorities = ['P0', 'P1', 'P2', 'P3', 'Other', 'Total']
     for priority in (priorities):
         response += "<TH>%s</TH>" % (priority)
     response += "</TR></THEAD><TBODY>"
     for owner in sorted(ownerListResponse['data']):
+        totalCount = 0
         if (INCLUDE_UNASSIGNED or len(owner) > 0):
             if owner == '':
                 owner = '""'
             ownerUS = getOwnerUS(owner)
             owner_clean = owner if owner != '""' else "Blank"
-            response += "<TR><TD class='ownername'><A HREF='http://prog-mgmt-apps:8984/US/Owner/%s'>%s</A></TD>" % (owner, owner_clean)
-            response += "<TD class='ownercount'>"
-            # print("Fetching US for owner: " + owner + "!")
+            response += '<TR><TD class="ownername"><A HREF="http://prog-mgmt-apps:8984/US/Owner/' + owner + '" data-toggle="tooltip" title="">' + owner_clean + '</A></TD>'
             if len(ownerUS) > 0:
-                response += str(len(ownerUS)) + "</TD>"
-                countByPriority = dict.fromkeys(['P0', 'P1', 'P2', 'P3', 'Other'], 0)
+                usTooltipLists = {}
+                for priority in PRIORITY_LIST:
+                    usTooltipLists[priority] = []
+                countByPriority = dict.fromkeys(PRIORITY_LIST, 0)
                 for us in ownerUS:
-                    if (us['Feature'] in featurePriorities and featurePriorities[us['Feature']] in countByPriority):
-                        countByPriority[featurePriorities[us['Feature']]] += 1
-                    else:
-                        print "ERR: Feature not in priorities list: %s " % (us['Feature'])
-                        countByPriority['Other'] += 1
-                # TODO: Fix this hack! make the printout in a loop
-                response += "<TD class='ownercount'>%s</TD><TD class='ownercount'>%s</TD><TD class='ownercount'>%s</TD><TD class='ownercount'>%s</TD><TD class='ownercount'>%s</TD>" % (str(countByPriority['P0']), str(countByPriority['P1']), str(countByPriority['P2']), str(countByPriority['P3']), str(countByPriority['Other']))
-                # for priority in sorted(countByPriority):
-                    # if (priority in countByPriority):
-                        # response += "<TD>%s = %s</TD>" % (priority, str(countByPriority[priority]))
+                    # print(us)
+                    if ((not request.query.filter) or (request.query.filter and includeItem(us, request.query.filter))):
+                        if (us['Feature'] in featurePriorities and featurePriorities[us['Feature']] in countByPriority):
+                            countByPriority[featurePriorities[us['Feature']]] += 1
+                            totalCount += 1
+                            usTooltipLists[featurePriorities[us['Feature']]].append(us)
+                        else:
+                            print "ERR: Feature not in priorities list: %s " % (us['Feature'])
+                            countByPriority['Other'] += 1
+                            totalCount += 1
+                            usTooltipLists['Other'].append(us)
+                for priority in PRIORITY_LIST:
+                    response += "<TD class='ownercount' data-html='true' data-toggle='tooltip' title='%s'>%s</TD>" % (getUsTooltips(priority, usTooltipLists), str(countByPriority[priority]))
             else:
                 response += 0
+            response += "<TD class='ownercount'>" + str(totalCount) + "</TD>"
             response += "</TR>"
     response += "</TBODY></TABLE>"
     return buildHtml(response)
+
+def getUsTooltips(priority, usTooltipLists):
+    if (not usTooltipLists[priority]):
+        # print("%s not in usTooltipLists" % (priority))
+        return("")
+    else: # process the list
+        resp = "<UL>"
+        for us in usTooltipLists[priority]:
+            resp += "<LI>%s: %s [%s]</LI>" % (us['ID'], us['Name'].replace("'", "&#39;"), us['Feature'])
+        resp += "</UL>"
+        return(resp)
 
 @route('/US/Owner/<owner>')
 def usByOwner(owner):
