@@ -79,6 +79,7 @@ def adminGetSelectedFile():
 @route('/_admin/redirect/<new_filename>')
 def adminRedirect(new_filename):
   if (os.path.isfile(os.sep.join([csvpath, new_filename]))):
+    print("adminRedirect: reading in new file: " + new_filename)
     read_file(new_filename)
     return buildResponseObjectSuccessOk()
   else:
@@ -119,12 +120,15 @@ def getFieldValueDouble(field1, value1, field2, value2):
   # Get the # of the field you're searching for
   fieldnum1 = csvfields.index(field1)
   fieldnum2 = csvfields.index(field2)
+  # print(csvfields)
   for r in csvcontents:
     if (r[fieldnum1] == value1) and (r[fieldnum2] == value2): # Match, so save the row
       hit = {}
       fieldCtr = 0
       # Add field names
       for f in r:
+        # print(csvfields[fieldCtr])
+        # print("fieldCtr = " + str(fieldCtr) + "...getFieldValueDouble... csvcontents (size of csvfields: " + str(len(csvfields)) + ")... f = " + f + "; fieldCtr = " + str(fieldCtr) + "; csvfields[" + str(fieldCtr) + "] = " + str(csvfields[fieldCtr]) + "... f = " + str(f))
         hit[csvfields[fieldCtr]] = f
         fieldCtr += 1
       result_rows.append(hit)
@@ -207,6 +211,7 @@ def listValuesByFieldFiltered(field, filter, value):
 
 def read_file(fname):
   global csvfields, csvfilename, csvcontents, csvdict
+  # print("read_file(" + fname + ") starting...")
   csvfields = []
   csvfilename = fname
   csvcontents = []
@@ -216,7 +221,9 @@ def read_file(fname):
     for row in csvreader:
       csvcontents.append(row)
       csvdict[row[0]] = row
+      # print("...setting csvdict[" + str(row[0]) + "]")
     csvfields = csvcontents[0]
+  # print("...csvfields len = " + str(len(csvfields)))
 
 def buildBasicResponseObject(status, remainder = {}):
   response = {}
