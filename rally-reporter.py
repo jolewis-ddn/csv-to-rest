@@ -22,10 +22,10 @@ _csv_filename_de = "unset"
 # ---------------------------------------#
 # Constants                              #
 # ---------------------------------------#
-# REST_SERVER_URL_DE = 'http://localhost:8982'
-REST_SERVER_URL_DE = 'http://prog-mgmt-apps:8982'
-# REST_SERVER_URL_US = 'http://localhost:8983'
-REST_SERVER_URL_US = 'http://prog-mgmt-apps:8983'
+REST_SERVER_URL_DE = 'http://localhost:8982'
+# REST_SERVER_URL_DE = 'http://prog-mgmt-apps:8982'
+REST_SERVER_URL_US = 'http://localhost:8983'
+# REST_SERVER_URL_US = 'http://prog-mgmt-apps:8983'
 
 GERRIT_SERVER_URL = 'http://localhost:8331'
 
@@ -640,5 +640,5 @@ def updateDataFile():
     subprocess.call(["python", "/home/jolewis/code/python/get-IME-US-list.py"], cwd="/home/jolewis/code/csv-to-rest/data")
     return buildHtml("CSV file update completed!")
 
-run(host='0.0.0.0', port=8984, reloader=True, debug=True)
-# run(host='0.0.0.0', port=8984)
+# run(host='0.0.0.0', port=8984, reloader=True, debug=True)
+run(host='0.0.0.0', port=8984, reloader=False, debug=False)
