@@ -28,7 +28,7 @@ function printReport_http(req, res) {
 			// First get the list of owner names
 			for (let row in rows) {
 				// console.log(row, rows[row]);
-				if (not rows.Owner in owners) {
+				if (rows.Owner in owners) {
 					owners.unshift(rows.Owner);
 					console.log('adding %s', rows.Owner);
 				}

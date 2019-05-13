@@ -11,21 +11,39 @@ import Rally
 import subprocess
 import datetime
 from datetime import datetime, timedelta
+import logging
 
 # ---------------------------------------#
 # Globals                                #
 # ---------------------------------------#
 _csv_filename = "unset"
+_csv_filename_de = "unset"
 
 # ---------------------------------------#
 # Constants                              #
 # ---------------------------------------#
-REST_SERVER_URL_DE = 'http://localhost:8982'
-REST_SERVER_URL_US = 'http://localhost:8983'
+# REST_SERVER_URL_DE = 'http://localhost:8982'
+REST_SERVER_URL_DE = 'http://prog-mgmt-apps:8982'
+# REST_SERVER_URL_US = 'http://localhost:8983'
+REST_SERVER_URL_US = 'http://prog-mgmt-apps:8983'
+
+GERRIT_SERVER_URL = 'http://localhost:8331'
+
 INCLUDE_UNASSIGNED = True
 # INCLUDE_UNASSIGNED = False
 
 PRIORITY_LIST = ['P0', 'P1', 'P2', 'P3', 'Other']
+
+# Translate Rally usernames to Gerrit usernames (only included if different)
+USERS = {
+    'Bernd S': { 'Gerrit': 'Bernd Schubert' },
+    'Chadi A': { 'Gerrit': 'Chadi Akel' },
+    'Dharmendra S': { 'Gerrit': 'Dharmendra Singh' },
+    'Lokesh Jaliminiche': { 'Gerrit': 'Lokesh Lokesh' },
+    'Manisha salve': { 'Gerrit': 'Manisha Salve' },
+    'Maxim P. Perminov': { 'Gerrit': 'Maksim Perminov' },
+    'Paul N': { 'Gerrit': 'Paul Nowoczynski' }
+}
 
 # TODO: Fix this to a dynamic assignment
 featurePriorities = {
@@ -54,7 +72,11 @@ featurePriorities = {
     "F2411": "Out",
     "F1289": "Out",
     "F1988": "P2",
+    "F2413": "P1",
+    "F2798": "P1"
 }
+
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(message)s')
 
 # ---------------------------------------#
 # Functions                              #
@@ -133,7 +155,12 @@ def getHtmlHeader(header):
             '}); '
             "</script>\n"
             "<style>th, td { text-align: center; }\n.ownername { text-align: right; width: 200px; }\n"
-            "td.ownercount { width: 50px; }\n.tooltip-inner { max-width: 500px; width: 350px; text-align: left; padding: 5px; background-color: black; margin: 5px; } </style>"
+            "td.ownercount { width: 50px; }\n.tooltip-inner { max-width: 500px; width: 350px; text-align: left; padding: 5px; background-color: black; margin: 5px; }\n"
+            "td.gerrit { width: 100px; }\n"
+            "td.gerritNew { padding: 5px; background-color: lightgreen; margin: 5px; }\n"
+            "td.gerritMerged { padding: 5px; background-color: lightblue; margin: 5px; }\n"
+            "td.gerritAbandoned { padding: 5px; background-color: #fee; margin: 5px; }\n"
+            "</style>"
         '<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">'
         '</head>'
         '<body>')
@@ -175,9 +202,9 @@ def parseFilename(filename):
     parts = filename.split('-')
     dateStr = parts[3][:-4]
     if (dateStr[:4] == "2019"):
-        # print(int(dateStr[:4]), int(dateStr[4:6]), int(dateStr[6:8]), int(dateStr[8:10]), int(dateStr[10:12]), int(dateStr[12:14]))
+        logging.debug(int(dateStr[:4]), int(dateStr[4:6]), int(dateStr[6:8]), int(dateStr[8:10]), int(dateStr[10:12]), int(dateStr[12:14]))
         dateVal = datetime(int(dateStr[:4]), int(dateStr[4:6]), int(dateStr[6:8]), int(dateStr[8:10]), int(dateStr[10:12]), int(dateStr[12:14]))
-        print(dateVal)
+        logging.debug(dateVal)
         # return(str(dateVal.strftime('%c')))
         # return(dateVal.strftime('%A %b %d, %I:%M %p'))
         return(dateVal)
@@ -188,10 +215,19 @@ def setFilename(fn):
     global _csv_filename
     _csv_filename = fn
 
+def setFilenameDE(fn):
+    global _csv_filename_de
+    _csv_filename_de = fn
+
 def getFilename():
     global _csv_filename
-    # print("getFilename() called...")
+    logging.debug("getFilename() called...")
     return(_csv_filename)
+
+def getFilenameDE():
+    global _csv_filename_de
+    logging.debug("getFilenameDE() called...")
+    return(_csv_filename_de)
 
 def getFilenameBlock():
     filename = getFilename()
@@ -234,14 +270,45 @@ def getOwnerUS(owner):
     setFilename(response['meta']['filename'])
     return(response['data'])
 
+def getOwnerGerritStats(owner = None):
+    if (owner):
+        if (owner in USERS):
+            gerrit_owner = USERS[owner]['Gerrit']
+            logging.info("Converting owner %s to Gerrit username %s" % (owner, gerrit_owner))
+            owner = gerrit_owner
+        owner_clean = urllib.quote(owner)
+        if owner_clean == '""':
+            owner_clean = ""
+        base_url = GERRIT_SERVER_URL + '/owner-stats/'
+        outurl = base_url + owner_clean
+        getOwnerStats = urllib2.urlopen(outurl).read()
+        response = json.loads(getOwnerStats)
+        logging.info(response)
+        response['status']['username'] = owner
+        return(response['status'])
+    else:
+        return(owner)
+
 def getDataFileList():
     resp = urllib2.urlopen(REST_SERVER_URL_US + '/_admin/get/filenames').read()
     list = json.loads(resp)['data']
     setFilename(json.loads(resp)['meta']['filename'])
     return(list)
 
+def getDataFileListDE():
+    resp = urllib2.urlopen(REST_SERVER_URL_DE + '/_admin/get/filenames').read()
+    list = json.loads(resp)['data']
+    setFilename(json.loads(resp)['meta']['filename'])
+    return(list)
+
 def getSelectedFile():
     resp = urllib2.urlopen(REST_SERVER_URL_US + '/_admin/get/selectedFile').read()
+    list = json.loads(resp)['data']
+    setFilename(list[0])
+    return(list)
+
+def getSelectedFileDE():
+    resp = urllib2.urlopen(REST_SERVER_URL_DE + '/_admin/get/selectedFile').read()
     list = json.loads(resp)['data']
     setFilename(list[0])
     return(list)
@@ -281,14 +348,28 @@ def selectLatestFile():
     selectedFile = getSelectedFile()
     if getLatestFile() != selectedFile:
         url = REST_SERVER_URL_US + '/_admin/redirect/' + getLatestFile()
-        print(url)
+        logging.debug(url)
         resp = urllib2.urlopen(url).read()
         result = json.loads(resp)
         setFilename(result['meta']['filename'])
-        print("Latest file is not selected... changing to " + getFilename())
+        logging.info("Latest file is not selected... changing to " + getFilename())
         return(result['meta']['filename'])
     else:
-        print("Latest file already selected... not changing..")
+        logging.debug("Latest file already selected... not changing..")
+        return(selectedFile)
+
+def selectLatestFileDE():
+    selectedFile = getSelectedFileDE()
+    if getLatestFileDE() != selectedFile:
+        url = REST_SERVER_URL_DE + '/_admin/redirect/' + getLatestFileDE()
+        logging.debug(url)
+        resp = urllib2.urlopen(url).read()
+        result = json.loads(resp)
+        setFilenameDE(result['meta']['filename'])
+        logging.info("Latest file is not selected... changing to " + getFilenameDE())
+        return(result['meta']['filename'])
+    else:
+        logging.debug("Latest file already selected... not changing..")
         return(selectedFile)
 
 def getLatestFile():
@@ -310,15 +391,38 @@ def getLatestFile():
     else:
         return "Error - couldn't determine latest file"
 
+def getLatestFileDE():
+    FILENAME_TEMPLATE = "IME-DE-list-20????????????.csv"
+    DE_FILE_PREFIX = "IME-DE-list-"
+    FILE_TYPE = ".csv"
+    start_date_pos = 12
+    end_date_pos = 26
+    files = getDataFileListDE()
+    lastTimestamp = -1
+    for f in files:
+        # Ignore files that don't match IME-DE-list-20????????????.csv
+        if (len(f) == len(FILENAME_TEMPLATE) and f[0:12] == DE_FILE_PREFIX and f[-4:] == FILE_TYPE):
+            logging.debug("checking " + f + "...")
+            timestamp = int(f[start_date_pos:end_date_pos])
+            if (timestamp > lastTimestamp):
+                logging.debug("... later timestamp = " + str(timestamp) + " (lastTimestamp: " + str(lastTimestamp) + ")!")
+                lastTimestamp = timestamp
+    logging.debug("getLatestFileDE: lastTimestamp = " + str(lastTimestamp))
+    if (lastTimestamp > -1):
+        logging.debug("... returning: " + DE_FILE_PREFIX + str(lastTimestamp) + FILE_TYPE)
+        return DE_FILE_PREFIX + str(lastTimestamp) + FILE_TYPE
+    else:
+        return "Error - couldn't determine latest file"
+
 def formatDE(entry):
-    # print(entry)
+    logging.debug(entry)
     result = ''.join(["<span id='", entry['ID'], "' ", buildStyleTag(entry), "><a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", 
                      entry['ID'],
                      "' target='_blank'>", entry['ID'], "</a>: ", entry['Name'], " (", entry['Release'], "/", entry['ScheduleState'], "/Est.:", (entry['PlanEstimate'] if entry['PlanEstimate'] else "<em>not estimated</em>"), "/", (entry['Iteration'] if entry['Iteration'] else "<em>No sprint set</em>"), ")", "</span>"])
     return(result)
 
 def formatUS(entry):
-    # print(entry)
+    logging.debug(entry)
     result = ''.join(["<span id='", entry['ID'], "' ", buildStyleTag(entry), "><a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", 
                      entry['ID'],
                      "' target='_blank'>", entry['ID'], "</a>: ", entry['Name'], " (<a href='https://rally1.rallydev.com/#/9693447120d/search?keywords=", entry['Feature'], "' target='_blank'>", entry['Feature'], "</a>/<!-- Rank: ", str(Rally.calculateRank(entry['DragAndDropRank'], 6)), ";-->", entry['Release'], "/", entry['ScheduleState'], "/Est.:", (entry['PlanEstimate'] if entry['PlanEstimate'] else "<em>not estimated</em>"), "/", (entry['Iteration'] if entry['Iteration'] else "<em>No sprint set</em>"), ")", "</span>"])
@@ -401,14 +505,12 @@ def usOwnerReportByRelease(release):
             ownerUS = getOwnerUS(owner)
             owner_clean = owner if owner != '""' else "Unassigned"
             response += "<LI><a href='/US/Owner/" + owner_clean + "' name='" + owner_clean + "'>" + owner_clean + "</a> (" + getStats(ownerUS) + ")"
-            print("Fetching US for owner: " + owner + "!")
+            logging.debug("Fetching US for owner: " + owner + "!")
             if len(ownerUS) > 0:
                 response += "<UL>"
                 sortedList = {}
                 for entry in ownerUS:
-                    # sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = formatUS(entry)
                     sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = entry
-                    # response += sortedList[key]
                 for us in sorted(sortedList):
                     response += buildListItem(sortedList[us])
                 response += "</UL>"
@@ -417,12 +519,12 @@ def usOwnerReportByRelease(release):
 
 def includeItem(us, filter):
     if ("ScheduleState" in us.keys()):
-        print(filter, us['ID'], us['Name'], us['ScheduleState'])
+        logging.debug(filter, us['ID'], us['Name'], us['ScheduleState'])
         if (filter[:1] == '!') and (us['ScheduleState'] != filter[1:]):
-            print("NEGATIVE filter match: %s and %s from %s remainder %s" % (us['ScheduleState'], filter, filter[:1], filter[1:]))
+            logging.debug("NEGATIVE filter match: %s and %s from %s remainder %s" % (us['ScheduleState'], filter, filter[:1], filter[1:]))
             return(True)
         elif (us['ScheduleState'] == filter):
-            print("filter match: %s and %s" % (us['ScheduleState'], filter))
+            logging.debug("filter match: %s and %s" % (us['ScheduleState'], filter))
             return(True)
         else:
             return(False)
@@ -437,7 +539,7 @@ def usAssignmentsByRelease(release):
     # Print for each owner
     ownerListResponse = getOwnerListJson(release)
     setFilename(ownerListResponse['meta']['filename'])
-    response = "<H1>Assignment Report for %s</H1>%s" % (release, getFilenameBlock())
+    response = "<H1>US/Gerrit Assignment Report for %s</H1>%s" % (release, getFilenameBlock())
     if (request.query.filter):
         filter = request.query.filter
         if (filter[:1] == "!"):
@@ -451,6 +553,7 @@ def usAssignmentsByRelease(release):
     priorities = ['P0', 'P1', 'P2', 'P3', 'Other', 'Total']
     for priority in (priorities):
         response += "<TH>%s</TH>" % (priority)
+    response += "<TH>New</TH><TH>Merged</TH><TH>Abandoned</TH>\n"
     response += "</TR></THEAD><TBODY>"
     for owner in sorted(ownerListResponse['data']):
         totalCount = 0
@@ -459,7 +562,7 @@ def usAssignmentsByRelease(release):
                 owner = '""'
             ownerUS = getOwnerUS(owner)
             owner_clean = owner if owner != '""' else "Blank"
-            response += '<TR><TD class="ownername"><A HREF="http://prog-mgmt-apps:8984/US/Owner/' + owner + '" data-toggle="tooltip" title="">' + owner_clean + '</A></TD>'
+            response += '<TR><TD class="ownername"><A HREF="/US/Owner/' + owner + '" data-toggle="tooltip" title="">' + owner_clean + '</A></TD>'
             if len(ownerUS) > 0:
                 usTooltipLists = {}
                 for priority in PRIORITY_LIST:
@@ -473,7 +576,8 @@ def usAssignmentsByRelease(release):
                             totalCount += 1
                             usTooltipLists[featurePriorities[us['Feature']]].append(us)
                         else:
-                            print "ERR: Feature not in priorities list: %s " % (us['Feature'])
+                            if (us['Feature'] and len(us['Feature']) == 5):
+                                logging.warn("ERR: Feature not in priorities list: .%s. " % (us['Feature']))
                             countByPriority['Other'] += 1
                             totalCount += 1
                             usTooltipLists['Other'].append(us)
@@ -482,13 +586,20 @@ def usAssignmentsByRelease(release):
             else:
                 response += 0
             response += "<TD class='ownercount'>" + str(totalCount) + "</TD>"
+            # Now print Gerrit stats
+            logging.info("Getting Gerrit stats for owner %s" % (owner))
+            gerrit_stats = getOwnerGerritStats(owner)
+            logging.info(gerrit_stats)
+            response += "<TD class='gerrit gerritNew'><A HREF='%s/owner/%s'>%s</A></TD>\n" % (GERRIT_SERVER_URL, gerrit_stats['username'], gerrit_stats['New'])
+            response += "<TD class='gerrit gerritMerged'><A HREF='%s/owner/%s'>%s</A></TD>\n" % (GERRIT_SERVER_URL, gerrit_stats['username'], gerrit_stats['Merged'])
+            response += "<TD class='gerrit gerritAbandoned'><A HREF='%s/owner/%s'>%s</A></TD>\n" % (GERRIT_SERVER_URL, gerrit_stats['username'], gerrit_stats['Abandoned'])
             response += "</TR>"
     response += "</TBODY></TABLE>"
     return buildHtml(response)
 
 def getUsTooltips(priority, usTooltipLists):
     if (not usTooltipLists[priority]):
-        # print("%s not in usTooltipLists" % (priority))
+        logging.debug("%s not in usTooltipLists" % (priority))
         return("")
     else: # process the list
         resp = "<UL>"
@@ -512,9 +623,10 @@ def usByOwner(owner):
 
 @route('/DE/Owner/<owner>')
 def deByOwner(owner):
-    selectLatestFile()
+    selectLatestFileDE()
     getOwnerData_json = getOwnerDE(owner)
-    response = "<H1>Defect List for " + owner + "</H1>%s<P>%s</P><p>Stats: %s</p>%s<p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getFilterBlock(), getStats(getOwnerData_json), getLinkbar())
+    # response = "<H1>Defect List for " + owner + "</H1>%s<P>%s</P><p>Stats: %s</p>%s<p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getFilterBlock(), getStats(getOwnerData_json), getLinkbar())
+    response = "<H1>Defect List for " + owner + "</H1>%s<P>%s</P><p>Stats: %s</p>%s<p><em>In priority order</em></p><UL>" % (getFilenameBlock(), getFilterBlock(), "", getLinkbar())
     sortedList = {}
     for entry in getOwnerData_json:
         sortedList[Rally.calculateRank(entry['DragAndDropRank'], 6)] = buildDEListItem(entry)
@@ -528,6 +640,5 @@ def updateDataFile():
     subprocess.call(["python", "/home/jolewis/code/python/get-IME-US-list.py"], cwd="/home/jolewis/code/csv-to-rest/data")
     return buildHtml("CSV file update completed!")
 
-# debug(True)
-# run(host='0.0.0.0', port=8984, reloader=True)
-run(host='0.0.0.0', port=8984)
+run(host='0.0.0.0', port=8984, reloader=True, debug=True)
+# run(host='0.0.0.0', port=8984)
