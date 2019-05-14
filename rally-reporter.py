@@ -79,9 +79,19 @@ featurePriorities = {
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(message)s')
 
+gerritUpdateTimestamp = None
+
 # ---------------------------------------#
 # Functions                              #
 # ---------------------------------------#
+
+def setGerritUpdateTimestamp(ts):
+    global gerritUpdateTimestamp
+    gerritUpdateTimestamp = ts
+
+def getGerritUpdateTimestamp():
+    global gerritUpdateTimestamp
+    return(gerritUpdateTimestamp)
 
 def getCurrentSprint():
     return('ime-1.3 Sprint 1'.replace(" ", ""))
@@ -235,7 +245,7 @@ def getFilenameBlock():
     dateBlock = parseFilename(filename)
     hoursAgo = ((datetime.now().replace(microsecond=0)-dateBlock).seconds/60)/60
     minutesAgo = ((datetime.now().replace(microsecond=0)-dateBlock).seconds/60)%60
-    return("<p><em>Filename: %s (%s; %s hour(s) %s minute(s) ago)</em></p>" % (filename, dateBlock.strftime('%A %b %d, %I:%M %p'), str(hoursAgo), str(minutesAgo)))
+    return("<p><em>Filename: %s (%s; %s hour(s) %s minute(s) ago) - Gerrit: %s</em></p>" % (filename, dateBlock.strftime('%A %b %d, %I:%M %p'), str(hoursAgo), str(minutesAgo), str(getGerritUpdateTimestamp())))
 
 def getFilterBlock():
     return("<div id='filterBlock'></div>")
@@ -286,6 +296,7 @@ def getOwnerGerritStats(owner = None):
         response = json.loads(getOwnerStats)
         logging.info(response)
         response['status']['username'] = owner
+        setGerritUpdateTimestamp(response['updated'])
         return(response['status'])
     else:
         return(owner)
