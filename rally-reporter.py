@@ -22,12 +22,13 @@ _csv_filename_de = "unset"
 # ---------------------------------------#
 # Constants                              #
 # ---------------------------------------#
-REST_SERVER_URL_DE = 'http://localhost:8982'
-# REST_SERVER_URL_DE = 'http://prog-mgmt-apps:8982'
-REST_SERVER_URL_US = 'http://localhost:8983'
-# REST_SERVER_URL_US = 'http://prog-mgmt-apps:8983'
+#REST_SERVER_URL_DE = 'http://localhost:8982'
+REST_SERVER_URL_DE = 'http://prog-mgmt-apps:8982'
+#REST_SERVER_URL_US = 'http://localhost:8983'
+REST_SERVER_URL_US = 'http://prog-mgmt-apps:8983'
 
-GERRIT_SERVER_URL = 'http://localhost:8331'
+#GERRIT_SERVER_URL = 'http://localhost:8331'
+GERRIT_SERVER_URL = 'http://prog-mgmt-apps:8331'
 
 INCLUDE_UNASSIGNED = True
 # INCLUDE_UNASSIGNED = False
