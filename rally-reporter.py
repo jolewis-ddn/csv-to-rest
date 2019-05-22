@@ -36,6 +36,7 @@ INCLUDE_UNASSIGNED = True
 PRIORITY_LIST = ['P0', 'P1', 'P2', 'P3', 'Other']
 PRIORITIES = ['P0', 'P1', 'P2', 'P3', 'Other', 'Total']
 SCHEDULE_STATES = ['New', 'Defined', 'In-Progress', 'Completed', 'Accepted']
+GERRIT_STATUSES = ['New', 'Merged', 'Abandoned']
 
 # Translate Rally usernames to Gerrit usernames (only included if different)
 USERS = {
@@ -261,6 +262,26 @@ def getOwnerListJson(rel = -1):
     jsonContent = json.loads(content)
     return(jsonContent)
 
+def getOwnerPatches(owner):
+    if (owner):
+        if (owner in USERS):
+            gerrit_owner = USERS[owner]['Gerrit']
+            logging.info("Converting owner %s to Gerrit username %s" % (owner, gerrit_owner))
+            owner = gerrit_owner
+        owner_clean = urllib.quote(owner)
+        if owner_clean == '""':
+            owner_clean = ""
+        base_url = GERRIT_SERVER_URL + '/owner-stats/'
+        outurl = base_url + owner_clean
+        getOwnerStats = urllib2.urlopen(outurl).read()
+        response = json.loads(getOwnerStats)
+        # logging.info(response)
+        response['status']['username'] = owner
+        setGerritUpdateTimestamp(response['updated'])
+        return(response['patches'])
+    else:
+        return(owner)
+
 def getOwnerDE(owner):
     if (owner):
         owner_clean = urllib.quote(owner)
@@ -302,7 +323,7 @@ def getOwnerGerritStats(owner = None):
         outurl = base_url + owner_clean
         getOwnerStats = urllib2.urlopen(outurl).read()
         response = json.loads(getOwnerStats)
-        logging.info(response)
+        # logging.info(response)
         response['status']['username'] = owner
         setGerritUpdateTimestamp(response['updated'])
         return(response['status'])
@@ -611,7 +632,12 @@ def usAssignmentsByRelease(release):
             if owner == '':
                 owner = '""'
             ownerUS = getOwnerUS(owner)
-            owner_clean = owner if owner != '""' else "Blank"
+            if (owner != '""' and owner != ''):
+                owner_clean = owner 
+            else:
+                owner_clean = "Blank"
+                owner = " "
+
             response += '<TR><TD class="ownername"><A HREF="/US/Owner/' + owner + '" data-toggle="tooltip" title="">' + owner_clean + '</A></TD>'
             if len(ownerUS) > 0:
                 usTooltipLists = {}
@@ -640,10 +666,27 @@ def usAssignmentsByRelease(release):
             # Print Gerrit stats
             logging.info("Getting Gerrit stats for owner %s" % (owner))
             gerrit_stats = getOwnerGerritStats(owner)
-            logging.debug(gerrit_stats)
-            response += "<TD class='gerrit gerritNew'><A HREF='%s/owner/%s'>%s</A></TD>\n" % (GERRIT_SERVER_URL, gerrit_stats['username'], gerrit_stats['New'])
-            response += "<TD class='gerrit gerritMerged'><A HREF='%s/owner/%s'>%s</A></TD>\n" % (GERRIT_SERVER_URL, gerrit_stats['username'], gerrit_stats['Merged'])
-            response += "<TD class='gerrit gerritAbandoned'><A HREF='%s/owner/%s'>%s</A></TD>\n" % (GERRIT_SERVER_URL, gerrit_stats['username'], gerrit_stats['Abandoned'])
+            patch_data = getOwnerPatches(owner)
+            logging.debug("Gerrit stats", gerrit_stats)
+            totalPatchCount = 0
+            gerrit_patches = {}
+            gerritTooltipLists = {}
+            
+            for status in GERRIT_STATUSES:
+                # gerrit_patches[status.upper()] = 0
+                gerrit_patches[status] = 0
+                gerritTooltipLists[status] = []
+
+            countByStatus = dict.fromkeys(GERRIT_STATUSES, 0)
+            for patch in patch_data:
+                logging.debug("Patch %s" % patch)
+                gerrit_patches[patch['status'].title()] += 1
+                countByStatus[patch['status'].title()] += 1
+                gerritTooltipLists[patch['status'].title()].append(patch)
+                totalPatchCount += 1
+
+            for status in GERRIT_STATUSES:
+                response += "<TD class='gerrit gerrit%s' data-html='true' data-toggle='tooltip' title='%s'><A HREF='%s/owner/%s'>%s</A></TD>\n" % (status, getGerritTooltips(status, gerritTooltipLists), GERRIT_SERVER_URL, gerrit_stats['username'], gerrit_patches[status])
             
             # Print Defect stats
             logging.info("Getting Defect stats for owner %s" % (owner))
@@ -651,9 +694,9 @@ def usAssignmentsByRelease(release):
             defects = getOwnerDE(owner)
             de_stats = {}
             deTooltipLists = {}
-            for ss in SCHEDULE_STATES:
-                de_stats[ss] = 0
-                deTooltipLists[ss] = []
+            for scheduleState in SCHEDULE_STATES:
+                de_stats[scheduleState] = 0
+                deTooltipLists[scheduleState] = []
 
             countByScheduleState = dict.fromkeys(SCHEDULE_STATES, 0)
             for de in defects:
@@ -671,8 +714,18 @@ def usAssignmentsByRelease(release):
     response += "</TBODY></TABLE>"
     return buildHtml(response)
 
+def getGerritTooltips(status, gerritTooltipLists):
+    if (not gerritTooltipLists[status]):
+        logging.debug("%s not in gerritTooltipLists" % (status))
+        return("")
+    else:
+        resp = "<UL>"
+        for g in gerritTooltipLists[status]:
+            resp += "<LI>%s: %s [%s]</LI>" % (g['_number'], g['subject'].replace("'", "&#39;"), g['branch'])
+        resp += "</UL>"
+        return(resp)
+
 def getDeTooltips(scheduleState, deTooltipLists):
-    # logging.warn(deTooltipLists)
     if (not deTooltipLists[scheduleState]):
         logging.debug("%s not in deTooltipLists" % (scheduleState))
         return("")
@@ -726,5 +779,5 @@ def updateDataFile():
     subprocess.call(["python", "/home/jolewis/code/python/get-IME-US-list.py"], cwd="/home/jolewis/code/csv-to-rest/data")
     return buildHtml("CSV file update completed!")
 
-run(host='0.0.0.0', port=8984, reloader=True, debug=True)
-# run(host='0.0.0.0', port=8984, reloader=False, debug=False)
+# run(host='0.0.0.0', port=8984, reloader=True, debug=True)
+run(host='0.0.0.0', port=8984, reloader=False, debug=False)
