@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /data
 
 # Byte-compiled / optimized / DLL files
@@ -105,3 +106,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 .vscode/settings.json
+=======
+.vscode
+*.pyc
+server.pem
+node_modules
+>>>>>>> 29082042e2f30e7173ff0ea43c3e035b5dda23fb
