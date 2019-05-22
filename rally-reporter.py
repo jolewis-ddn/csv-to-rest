@@ -34,6 +34,8 @@ INCLUDE_UNASSIGNED = True
 # INCLUDE_UNASSIGNED = False
 
 PRIORITY_LIST = ['P0', 'P1', 'P2', 'P3', 'Other']
+PRIORITIES = ['P0', 'P1', 'P2', 'P3', 'Other', 'Total']
+SCHEDULE_STATES = ['New', 'Defined', 'In-Progress', 'Completed', 'Accepted']
 
 # Translate Rally usernames to Gerrit usernames (only included if different)
 USERS = {
@@ -166,7 +168,7 @@ def getHtmlHeader(header):
             '}); '
             "</script>\n"
             "<style>th, td { text-align: center; }\n.ownername { text-align: right; width: 200px; }\n"
-            "td.ownercount { width: 50px; }\n.tooltip-inner { max-width: 500px; width: 350px; text-align: left; padding: 5px; background-color: black; margin: 5px; }\n"
+            "td.ownercount { width: 70px; }\n.tooltip-inner { max-width: 500px; width: 500px; text-align: left; padding: 5px; background-color: black; margin: 5px; }\n"
             "td.gerrit { width: 100px; }\n"
             "td.gerritNew { padding: 5px; background-color: lightgreen; margin: 5px; }\n"
             "td.gerritMerged { padding: 5px; background-color: lightblue; margin: 5px; }\n"
@@ -260,26 +262,32 @@ def getOwnerListJson(rel = -1):
     return(jsonContent)
 
 def getOwnerDE(owner):
-    owner_clean = urllib.quote(owner)
-    if owner_clean == '""':
-        owner_clean = ""
-    base_url = REST_SERVER_URL_DE + '/get/Release/IME%201.3/Owner/'
-    outurl = base_url + owner_clean
-    getOwnerData = urllib2.urlopen(outurl).read()
-    response = json.loads(getOwnerData)
-    setFilename(response['meta']['filename'])
-    return(response['data'])
+    if (owner):
+        owner_clean = urllib.quote(owner)
+        if owner_clean == '""':
+            owner_clean = ""
+        base_url = REST_SERVER_URL_DE + '/get/Release/IME%201.3/Owner/'
+        outurl = base_url + owner_clean
+        getOwnerData = urllib2.urlopen(outurl).read()
+        response = json.loads(getOwnerData)
+        setFilename(response['meta']['filename'])
+        return(response['data'])
+    else:
+        return(owner)
 
 def getOwnerUS(owner):
-    owner_clean = urllib.quote(owner)
-    if owner_clean == '""':
-        owner_clean = ""
-    base_url = REST_SERVER_URL_US + '/get/Release/IME%201.3/Owner/'
-    outurl = base_url + owner_clean
-    getOwnerData = urllib2.urlopen(outurl).read()
-    response = json.loads(getOwnerData)
-    setFilename(response['meta']['filename'])
-    return(response['data'])
+    if (owner):
+        owner_clean = urllib.quote(owner)
+        if owner_clean == '""':
+            owner_clean = ""
+        base_url = REST_SERVER_URL_US + '/get/Release/IME%201.3/Owner/'
+        outurl = base_url + owner_clean
+        getOwnerData = urllib2.urlopen(outurl).read()
+        response = json.loads(getOwnerData)
+        setFilename(response['meta']['filename'])
+        return(response['data'])
+    else:
+        return(owner)
 
 def getOwnerGerritStats(owner = None):
     if (owner):
@@ -300,6 +308,25 @@ def getOwnerGerritStats(owner = None):
         return(response['status'])
     else:
         return(owner)
+
+# def getOwnerDEStats(owner = None):
+#     logging.debug("getOwnerDEStats called")
+#     if (owner):
+#         logging.debug("getOwnerDEStats: owner = %s" % (owner)) 
+#         owner_clean = urllib.quote(owner)
+#         logging.debug("getOwnerDEStats: owner_clean = %s" % (owner_clean)) 
+#         if owner_clean == '""':
+#             owner_clean = ""
+#         base_url = REST_SERVER_URL_DE + '/get/Release/IME%201.3/Owner/'
+#         logging.debug("getOwnerDEStats: base_url = %s" % (base_url))
+#         outurl = base_url + owner_clean
+#         logging.debug("getOwnerDEStats: outurl = %s" % (outurl))
+#         getOwnerData = urllib2.urlopen(outurl).read()
+#         response = json.loads(getOwnerData)
+#         # setFilename(response['meta']['filename'])
+#         return(response['data'])
+#     else:
+#         return(owner)
 
 def getDataFileList():
     resp = urllib2.urlopen(REST_SERVER_URL_US + '/_admin/get/filenames').read()
@@ -561,12 +588,23 @@ def usAssignmentsByRelease(release):
         response += "<H2><small>Showing <bold>%s</bold></small></H2>%s" % (filter, showAllLink)
     else:
         response += "<H2><small><bold>No</bold> Filter set</small></H2>" + showAllButAcceptedLink
-    response += "<TABLE><THEAD><TR><TH class='ownername'>Owner</TH>"
-    priorities = ['P0', 'P1', 'P2', 'P3', 'Other', 'Total']
-    for priority in (priorities):
+    response += "<TABLE><THEAD><TR><TH></TH><TH colspan=6 class='column_banner'>User Stories</TH><TH colspan=3 class='column_banner'>Patches / Gerrit</TH><th colspan=%s class='column_banner'>Defects</TH></TR><TR><TH class='ownername'>Owner</TH>" % (str(len(SCHEDULE_STATES) + 1))
+    
+    # US headers
+    for priority in (PRIORITIES):
         response += "<TH>%s</TH>" % (priority)
+    
+    # Gerrit headers
     response += "<TH>New</TH><TH>Merged</TH><TH>Abandoned</TH>\n"
+    
+    # DE headers
+    for scheduleState in (SCHEDULE_STATES):
+        response += "<TH>%s</TH>" % (scheduleState)
+    response += "<TH>%s</TH>" % ("Total")
+    
+    # Close header and start body
     response += "</TR></THEAD><TBODY>"
+
     for owner in sorted(ownerListResponse['data']):
         totalCount = 0
         if (INCLUDE_UNASSIGNED or len(owner) > 0):
@@ -598,16 +636,52 @@ def usAssignmentsByRelease(release):
             else:
                 response += 0
             response += "<TD class='ownercount'>" + str(totalCount) + "</TD>"
-            # Now print Gerrit stats
+            
+            # Print Gerrit stats
             logging.info("Getting Gerrit stats for owner %s" % (owner))
             gerrit_stats = getOwnerGerritStats(owner)
-            logging.info(gerrit_stats)
+            logging.debug(gerrit_stats)
             response += "<TD class='gerrit gerritNew'><A HREF='%s/owner/%s'>%s</A></TD>\n" % (GERRIT_SERVER_URL, gerrit_stats['username'], gerrit_stats['New'])
             response += "<TD class='gerrit gerritMerged'><A HREF='%s/owner/%s'>%s</A></TD>\n" % (GERRIT_SERVER_URL, gerrit_stats['username'], gerrit_stats['Merged'])
             response += "<TD class='gerrit gerritAbandoned'><A HREF='%s/owner/%s'>%s</A></TD>\n" % (GERRIT_SERVER_URL, gerrit_stats['username'], gerrit_stats['Abandoned'])
+            
+            # Print Defect stats
+            logging.info("Getting Defect stats for owner %s" % (owner))
+            totalDeCount = 0
+            defects = getOwnerDE(owner)
+            de_stats = {}
+            deTooltipLists = {}
+            for ss in SCHEDULE_STATES:
+                de_stats[ss] = 0
+                deTooltipLists[ss] = []
+
+            countByScheduleState = dict.fromkeys(SCHEDULE_STATES, 0)
+            for de in defects:
+                de_stats[de['ScheduleState']] += 1
+                countByScheduleState[de['ScheduleState']] += 1
+                deTooltipLists[de['ScheduleState']].append(de)
+                totalDeCount += 1
+
+            for scheduleState in SCHEDULE_STATES:
+                response += "<TD class='ownercount' data-html='true' data-toggle='tooltip' title='%s'>%s</TD>" % (getDeTooltips(scheduleState, deTooltipLists), str(countByScheduleState[scheduleState]))
+            response += "<TD class='defect defectTotal'>%s</TD>\n" % (totalDeCount)
+
+            # Close the row
             response += "</TR>"
     response += "</TBODY></TABLE>"
     return buildHtml(response)
+
+def getDeTooltips(scheduleState, deTooltipLists):
+    # logging.warn(deTooltipLists)
+    if (not deTooltipLists[scheduleState]):
+        logging.debug("%s not in deTooltipLists" % (scheduleState))
+        return("")
+    else:
+        resp = "<UL>"
+        for de in deTooltipLists[scheduleState]:
+            resp += "<LI>%s: %s [%s]</LI>" % (de['ID'], de['Name'].replace("'", "&#39;"), de['Severity'])
+        resp += "</UL>"
+        return(resp)
 
 def getUsTooltips(priority, usTooltipLists):
     if (not usTooltipLists[priority]):
@@ -652,5 +726,5 @@ def updateDataFile():
     subprocess.call(["python", "/home/jolewis/code/python/get-IME-US-list.py"], cwd="/home/jolewis/code/csv-to-rest/data")
     return buildHtml("CSV file update completed!")
 
-# run(host='0.0.0.0', port=8984, reloader=True, debug=True)
-run(host='0.0.0.0', port=8984, reloader=False, debug=False)
+run(host='0.0.0.0', port=8984, reloader=True, debug=True)
+# run(host='0.0.0.0', port=8984, reloader=False, debug=False)
