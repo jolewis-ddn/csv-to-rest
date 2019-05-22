@@ -127,9 +127,8 @@ def getFieldValueDouble(field1, value1, field2, value2):
       fieldCtr = 0
       # Add field names
       for f in r:
-        # print(csvfields[fieldCtr])
-        # print("fieldCtr = " + str(fieldCtr) + "...getFieldValueDouble... csvcontents (size of csvfields: " + str(len(csvfields)) + ")... f = " + f + "; fieldCtr = " + str(fieldCtr) + "; csvfields[" + str(fieldCtr) + "] = " + str(csvfields[fieldCtr]) + "... f = " + str(f))
-        hit[csvfields[fieldCtr]] = f
+        if (fieldCtr < len(csvfields)):
+          hit[csvfields[fieldCtr]] = f
         fieldCtr += 1
       result_rows.append(hit)
   return buildResponseObjectSuccess(result_rows)
