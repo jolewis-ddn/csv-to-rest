@@ -28,6 +28,7 @@ parser.add_argument('-p', '--port', type=int, nargs='?', default=PORT_DEFAULT)
 parser.add_argument('-v', '--verbose', help='Verbose output', action='store_true')
 parser.add_argument('-q', '--quiet', help='No output', action='store_true')
 parser.add_argument('-z', '--dev-mode', help='Dev mode - debug mode & reloading', action='store_true')
+parser.add_argument('-C', '--critmaj', help='Only include Critical and Major Severity defects', action='store_true')
 args = parser.parse_args()
 
 csvpath = args.datapath
@@ -36,6 +37,7 @@ port = args.port
 verbose = args.verbose
 quiet = args.quiet
 devmode = args.dev_mode
+critmaj = args.critmaj
 
 # Don't allow -q and -v
 if verbose and quiet:
@@ -217,11 +219,18 @@ def read_file(fname):
   csvdict = {}
   with open(os.sep.join([csvpath, csvfilename]), 'r') as csvfile:
     csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
+    csvfields = next(csvreader) # Read in the field names
+    # print("csvfields: %s" % (csvfields))
+    severityPos = csvfields.index("Severity") # Store the severity position for later
     for row in csvreader:
-      csvcontents.append(row)
-      csvdict[row[0]] = row
+      if (critmaj and (row[severityPos] == "Minor Problem" or row[severityPos] == "Cosmetic")):
+        # print("Skipping Minor/Cosmetic problem")
+        pass
+      else:
+        csvcontents.append(row)
+        csvdict[row[0]] = row
       # print("...setting csvdict[" + str(row[0]) + "]")
-    csvfields = csvcontents[0]
+    # csvfields = csvcontents[0]
   # print("...csvfields len = " + str(len(csvfields)))
 
 def buildBasicResponseObject(status, remainder = {}):
