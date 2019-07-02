@@ -1,12 +1,6 @@
-<<<<<<< HEAD
 # csv-to-rest
 
 Expose data from a CSV file via a REST server
-=======
-# rally-reporter
-
-Report on Rally (F/US/DE) assignments and status 
->>>>>>> 29082042e2f30e7173ff0ea43c3e035b5dda23fb
 
 ## Author
 
@@ -14,25 +8,16 @@ John D. Lewis <jolewis@ddn.com>
 
 ## Installation
 
-<<<<<<< HEAD
 None
 
 ## Usage
 
 python csv-to-rest.py
-=======
-TBD
-
-## Usage
-
-python rally-reporter.py
->>>>>>> 29082042e2f30e7173ff0ea43c3e035b5dda23fb
 
 ## Dependencies
 
 Bottle framework
 
-<<<<<<< HEAD
 ## Format
 
 [Responses follow the jsonapi structure](https://jsonapi.org/format/ "JSONAPI home page")
@@ -40,11 +25,6 @@ Bottle framework
 ## History
 
 2019-01-30: Created
-=======
-## History
-
-1/31/2019: Created
->>>>>>> 29082042e2f30e7173ff0ea43c3e035b5dda23fb
 
 ## Credits
 
