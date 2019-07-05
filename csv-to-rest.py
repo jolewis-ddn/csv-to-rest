@@ -221,7 +221,10 @@ def read_file(fname):
     csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
     csvfields = next(csvreader) # Read in the field names
     # print("csvfields: %s" % (csvfields))
-    severityPos = csvfields.index("Severity") # Store the severity position for later
+    if (critmaj): # Only capture the severityPos if critmaj is set
+      severityPos = csvfields.index("Severity") # Store the severity position for later
+    else:
+      severityPos = None
     for row in csvreader:
       if (critmaj and (row[severityPos] == "Minor Problem" or row[severityPos] == "Cosmetic")):
         # print("Skipping Minor/Cosmetic problem")
