@@ -1,3 +1,7 @@
+[![Maintainability](https://api.codeclimate.com/v1/badges/1214557d66fc63353b77/maintainability)](https://codeclimate.com/github/jolewis-ddn/csv-to-rest/maintainability)
+
+[![Test Coverage](https://api.codeclimate.com/v1/badges/1214557d66fc63353b77/test_coverage)](https://codeclimate.com/github/jolewis-ddn/csv-to-rest/test_coverage)
+
 # csv-to-rest
 
 Expose data from a CSV file via a REST server
