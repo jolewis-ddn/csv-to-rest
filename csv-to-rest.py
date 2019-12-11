@@ -5,6 +5,7 @@ import os.path
 from os import listdir
 from os.path import isfile, join
 import argparse
+import glob
 
 # Constants
 LINE_RETURN_COUNT_MAX = 100 # How many records to return in a dump
@@ -24,6 +25,7 @@ csvdict = {}
 parser = argparse.ArgumentParser(description='Expose CSV via REST')
 parser.add_argument('-d', '--datapath', type=str, nargs='?', default=CSVPATH_DEFAULT)
 parser.add_argument('-f', '--filename', type=str, nargs='?', default=CSVFILENAME_DEFAULT)
+parser.add_argument('-t', '--template', type=str, nargs='?', default=None)
 parser.add_argument('-p', '--port', type=int, nargs='?', default=PORT_DEFAULT)
 parser.add_argument('-v', '--verbose', help='Verbose output', action='store_true')
 parser.add_argument('-q', '--quiet', help='No output', action='store_true')
@@ -33,6 +35,7 @@ args = parser.parse_args()
 
 csvpath = args.datapath
 csvfilename = args.filename
+fname_glob = args.template
 port = args.port
 verbose = args.verbose
 quiet = args.quiet
@@ -266,7 +269,12 @@ def buildResponseObjectError(errors):
 
 def getDataFiles():
   global csvpath
-  onlyfiles = [f for f in listdir(csvpath) if (isfile(join(csvpath, f)) and f.endswith(".csv"))]
+  if (fname_glob):   # Glob/template specified
+    print("fname_glob set (%s)..." % (csvpath + os.path.sep + fname_glob))
+    onlyfiles = [os.path.basename(f) for f in glob.glob(csvpath + os.path.sep + fname_glob)]
+  else:              # No globbing/template
+    print("fname_glob not set...")
+    onlyfiles = [f for f in listdir(csvpath) if (isfile(join(csvpath, f)) and f.endswith(".csv"))]
   return sorted(onlyfiles, reverse=True)
 
 def listDataFiles():
