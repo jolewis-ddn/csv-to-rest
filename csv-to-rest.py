@@ -266,7 +266,7 @@ def buildResponseObjectError(errors):
 
 def getDataFiles():
   global csvpath
-  onlyfiles = [f for f in listdir(csvpath) if isfile(join(csvpath, f))]
+  onlyfiles = [f for f in listdir(csvpath) if (isfile(join(csvpath, f)) and f.endswith(".csv"))]
   return sorted(onlyfiles, reverse=True)
 
 def listDataFiles():
