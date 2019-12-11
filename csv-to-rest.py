@@ -6,6 +6,9 @@ from os import listdir
 from os.path import isfile, join
 import argparse
 import glob
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
 # Constants
 LINE_RETURN_COUNT_MAX = 100 # How many records to return in a dump
@@ -44,15 +47,15 @@ critmaj = args.critmaj
 
 # Don't allow -q and -v
 if verbose and quiet:
-  print("Cannot set both 'verbose' and 'quiet' parameters")
+  logging.fatal("Cannot set both 'verbose' and 'quiet' parameters")
   exit(101)
 
 # Verify that the path exists
 if (not os.path.exists(os.sep.join([csvpath, csvfilename]))):
-  print("Default file (%s) was not found... Please check the filename and try again..." % (os.sep.join([csvpath, csvfilename])))
+  logging.fatal("Default file (%s) was not found... Please check the filename and try again..." % (os.sep.join([csvpath, csvfilename])))
   exit(1)
 else:
-  print("Parsing %s" % (os.sep.join([csvpath, csvfilename])))
+  logging.debug("Parsing %s" % (os.sep.join([csvpath, csvfilename])))
 
 # Routes
 @route('/')
@@ -84,7 +87,7 @@ def adminGetSelectedFile():
 @route('/_admin/redirect/<new_filename>')
 def adminRedirect(new_filename):
   if (os.path.isfile(os.sep.join([csvpath, new_filename]))):
-    print("adminRedirect: reading in new file: " + new_filename)
+    logging.info("adminRedirect: reading in new file: " + new_filename)
     read_file(new_filename)
     return buildResponseObjectSuccessOk()
   else:
@@ -125,7 +128,7 @@ def getFieldValueDouble(field1, value1, field2, value2):
   # Get the # of the field you're searching for
   fieldnum1 = csvfields.index(field1)
   fieldnum2 = csvfields.index(field2)
-  # print(csvfields)
+  # logging.debug(csvfields)
   for r in csvcontents:
     if (r[fieldnum1] == value1) and (r[fieldnum2] == value2): # Match, so save the row
       hit = {}
@@ -215,7 +218,7 @@ def listValuesByFieldFiltered(field, filter, value):
 
 def read_file(fname):
   global csvfields, csvfilename, csvcontents, csvdict
-  # print("read_file(" + fname + ") starting...")
+  # logging.debug("read_file(" + fname + ") starting...")
   csvfields = []
   csvfilename = fname
   csvcontents = []
@@ -223,21 +226,21 @@ def read_file(fname):
   with open(os.sep.join([csvpath, csvfilename]), 'r') as csvfile:
     csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
     csvfields = next(csvreader) # Read in the field names
-    # print("csvfields: %s" % (csvfields))
+    # logging.debug("csvfields: %s" % (csvfields))
     if (critmaj): # Only capture the severityPos if critmaj is set
       severityPos = csvfields.index("Severity") # Store the severity position for later
     else:
       severityPos = None
     for row in csvreader:
       if (critmaj and (row[severityPos] == "Minor Problem" or row[severityPos] == "Cosmetic")):
-        # print("Skipping Minor/Cosmetic problem")
+        # logging.debug("Skipping Minor/Cosmetic problem")
         pass
       else:
         csvcontents.append(row)
         csvdict[row[0]] = row
-      # print("...setting csvdict[" + str(row[0]) + "]")
+      # logging.debug("...setting csvdict[" + str(row[0]) + "]")
     # csvfields = csvcontents[0]
-  # print("...csvfields len = " + str(len(csvfields)))
+  # logging.debug("...csvfields len = " + str(len(csvfields)))
 
 def buildBasicResponseObject(status, remainder = {}):
   response = {}
@@ -270,10 +273,10 @@ def buildResponseObjectError(errors):
 def getDataFiles():
   global csvpath
   if (fname_glob):   # Glob/template specified
-    print("fname_glob set (%s)..." % (csvpath + os.path.sep + fname_glob))
+    logging.info("fname_glob set (%s)..." % (csvpath + os.path.sep + fname_glob))
     onlyfiles = [os.path.basename(f) for f in glob.glob(csvpath + os.path.sep + fname_glob)]
   else:              # No globbing/template
-    print("fname_glob not set...")
+    logging.info("fname_glob not set...")
     onlyfiles = [f for f in listdir(csvpath) if (isfile(join(csvpath, f)) and f.endswith(".csv"))]
   return sorted(onlyfiles, reverse=True)
 
@@ -288,11 +291,12 @@ def listDataFiles():
 if __name__ == "__main__":
   if devmode:
     debug(True)
-    print "In Developer Mode... debug(True)"
+    # logging.basicConfig(level=logging.DEBUG)
+    logging.debug("In Developer Mode... debug(True)", )
 
   if verbose or not quiet:
-    print "Data path: %s" % (csvpath)
-    print "Quiet? %s; Verbose? %s" % (quiet, verbose)
+    logging.info("Data path: %s" % (csvpath))
+    logging.info("Quiet? %s; Verbose? %s" % (quiet, verbose))
 
   read_file(csvfilename)
 
