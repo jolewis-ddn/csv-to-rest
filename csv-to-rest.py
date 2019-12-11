@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 # Constants
 LINE_RETURN_COUNT_MAX = 100 # How many records to return in a dump
 CSVPATH_DEFAULT = './data/'
-CSVFILENAME_DEFAULT = 'IME-US-list.csv'
+# CSVFILENAME_DEFAULT = 'IME-US-list.csv'
 PORT_DEFAULT = 8983
 
 # Globals
@@ -27,7 +27,7 @@ csvdict = {}
 # Fetch arguments
 parser = argparse.ArgumentParser(description='Expose CSV via REST')
 parser.add_argument('-d', '--datapath', type=str, nargs='?', default=CSVPATH_DEFAULT)
-parser.add_argument('-f', '--filename', type=str, nargs='?', default=CSVFILENAME_DEFAULT)
+parser.add_argument('-f', '--filename', type=str, nargs='?', default=None)
 parser.add_argument('-t', '--template', type=str, nargs='?', default=None)
 parser.add_argument('-p', '--port', type=int, nargs='?', default=PORT_DEFAULT)
 parser.add_argument('-v', '--verbose', help='Verbose output', action='store_true')
@@ -49,13 +49,6 @@ critmaj = args.critmaj
 if verbose and quiet:
   logging.fatal("Cannot set both 'verbose' and 'quiet' parameters")
   exit(101)
-
-# Verify that the path exists
-if (not os.path.exists(os.sep.join([csvpath, csvfilename]))):
-  logging.fatal("Default file (%s) was not found... Please check the filename and try again..." % (os.sep.join([csvpath, csvfilename])))
-  exit(1)
-else:
-  logging.debug("Parsing %s" % (os.sep.join([csvpath, csvfilename])))
 
 # Routes
 @route('/')
@@ -289,6 +282,20 @@ def listDataFiles():
   return result
 
 if __name__ == "__main__":
+  # Verify that the path exists
+  if (not os.path.exists(csvpath)):
+    logging.fatal("Path (%s) was not found... " % (csvpath))
+    exit(101)
+  else:
+    if None == csvfilename:
+      csvfilename = getDataFiles()[0]
+    # Verify the file exists
+    if (not os.path.exists(csvpath + os.path.sep + csvfilename)):
+      logging.fatal("Can't find file (path: %s; name: %s). Exiting" % (csvpath, csvfilename))
+      exit(102)
+    else:
+      logging.debug("Parsing %s" % (os.sep.join([csvpath, csvfilename])))
+
   if devmode:
     debug(True)
     # logging.basicConfig(level=logging.DEBUG)

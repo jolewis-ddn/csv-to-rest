@@ -4,3 +4,5 @@ data/
 *.pyc
 server.pem
 node_modules
+go.sh
+
