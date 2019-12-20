@@ -24,6 +24,8 @@ csvfields = []
 csvcontents = []
 csvdict = {}
 
+_filelist = []
+
 # Fetch arguments
 parser = argparse.ArgumentParser(description='Expose CSV via REST')
 parser.add_argument('-d', '--datapath', type=str, nargs='?', default=CSVPATH_DEFAULT)
@@ -57,7 +59,7 @@ def home():
 
 @route('/_admin')
 def admin():
-  return '<h1>admin page</h1><h2>Filename</h2>' + csvfilename + '<h2># of records</h2>' + str(len(csvcontents) - 1) + "<h2>Fields</h2><UL><LI>" + '</LI><LI>'.join(csvfields) + "</LI></UL>\n" + "<h2>Available data files</h2>" + listDataFiles()
+  return '<h1>admin page</h1><h2>Filename</h2>' + csvfilename + '<h2># of records</h2>' + str(len(_filelist) - 1) + "<h2>First file</h2><p>" + getFirstFilename() + "</p><h2>Last file</h2><p>" + getLastFilename() + "</p><h2>Fields</h2><UL><LI>" + '</LI><LI>'.join(csvfields) + "</LI></UL>\n" + "<h2>Available data files</h2>" + listDataFiles()
 
 @route('/_admin/show/fields')
 def adminShowfields():
@@ -264,14 +266,21 @@ def buildResponseObjectError(errors):
   return result
 
 def getDataFiles():
-  global csvpath
+  # global csvpath, _filelist
   if (fname_glob):   # Glob/template specified
     logging.info("fname_glob set (%s)..." % (csvpath + os.path.sep + fname_glob))
     onlyfiles = [os.path.basename(f) for f in glob.glob(csvpath + os.path.sep + fname_glob)]
   else:              # No globbing/template
     logging.info("fname_glob not set...")
     onlyfiles = [f for f in listdir(csvpath) if (isfile(join(csvpath, f)) and f.endswith(".csv"))]
-  return sorted(onlyfiles, reverse=True)
+  _filelist = sorted(onlyfiles, reverse=True)
+  return(_filelist)
+
+def getLastFilename():
+  return(_filelist[0])
+
+def getFirstFilename():
+  return(_filelist[-1])
 
 def listDataFiles():
   result = "<UL>"
@@ -287,8 +296,9 @@ if __name__ == "__main__":
     logging.fatal("Path (%s) was not found... " % (csvpath))
     exit(101)
   else:
+    _filelist = getDataFiles()
     if None == csvfilename:
-      csvfilename = getDataFiles()[0]
+      csvfilename = _filelist[0]
     # Verify the file exists
     if (not os.path.exists(csvpath + os.path.sep + csvfilename)):
       logging.fatal("Can't find file (path: %s; name: %s). Exiting" % (csvpath, csvfilename))
