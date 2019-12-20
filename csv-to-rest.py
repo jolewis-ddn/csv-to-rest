@@ -1,4 +1,4 @@
-from bottle import route, run, template, response, static_file, debug
+from bottle import route, run, template, response, static_file, debug, redirect
 import csv
 import json
 import os.path
@@ -59,7 +59,7 @@ def home():
 
 @route('/_admin')
 def admin():
-  return '<h1>admin page</h1><h2>Filename</h2>' + csvfilename + '<h2># of records</h2>' + str(len(_filelist) - 1) + "<h2>First file</h2><p>" + getFirstFilename() + "</p><h2>Last file</h2><p>" + getLastFilename() + "</p><h2>Fields</h2><UL><LI>" + '</LI><LI>'.join(csvfields) + "</LI></UL>\n" + "<h2>Available data files</h2>" + listDataFiles()
+  return '<h1>admin page</h1><h2>Filename</h2>' + csvfilename + '<h2># of records</h2>' + str(len(_filelist) - 1) + "<h2>First file</h2><p>" + getFirstFilename() + " - <a href='/_admin/redirect/" + getFirstFilename() + "'>select</a></p><h2>Last file</h2>" + getLastFilename() + " - <a href='/_admin/redirect/" + getLastFilename() + "'>select</a></p><h2>Template</h2><p>" + (fname_glob if fname_glob else "<em>none set</em>") + "</p><h2>Fields</h2><UL><LI>" + '</LI><LI>'.join(csvfields) + "</LI></UL>\n" + "<h2>Available data files</h2>" + listDataFiles()
 
 @route('/_admin/show/fields')
 def adminShowfields():
@@ -72,12 +72,26 @@ def adminGetFields():
 
 @route('/_admin/get/filenames')
 def adminGetFilenames():
+  global filelist
   filelist = getDataFiles()
   return buildResponseObjectSuccess(filelist)
 
 @route('/_admin/get/selectedFile')
 def adminGetSelectedFile():
+  global csvfilename
   return buildResponseObjectSuccess(csvfilename)
+
+@route('/_admin/get/template')
+def adminGetTemplate():
+  global fname_glob
+  return fname_glob
+
+@route('/_admin/set/template/<new_template>')
+def adminSetTemplate(new_template):
+  global fname_glob
+  fname_glob = new_template
+  getDataFiles()
+  redirect('/_admin')
 
 @route('/_admin/redirect/<new_filename>')
 def adminRedirect(new_filename):
@@ -87,6 +101,16 @@ def adminRedirect(new_filename):
     return buildResponseObjectSuccessOk()
   else:
     return buildResponseObjectError(["File not found"])
+
+@route('/_admin/redirect-latest')
+def adminRedirectLatest():
+  read_file(getLastFilename())
+  return buildResponseObjectSuccessOk()
+
+@route('/_admin/redirect-first')
+def adminRedirectFirst():
+  read_file(getFirstFilename())
+  return buildResponseObjectSuccessOk()
 
 @route('/get/<id_value>')
 def getIdValue(id_value):
@@ -123,7 +147,6 @@ def getFieldValueDouble(field1, value1, field2, value2):
   # Get the # of the field you're searching for
   fieldnum1 = csvfields.index(field1)
   fieldnum2 = csvfields.index(field2)
-  # logging.debug(csvfields)
   for r in csvcontents:
     if (r[fieldnum1] == value1) and (r[fieldnum2] == value2): # Match, so save the row
       hit = {}
@@ -213,7 +236,7 @@ def listValuesByFieldFiltered(field, filter, value):
 
 def read_file(fname):
   global csvfields, csvfilename, csvcontents, csvdict
-  # logging.debug("read_file(" + fname + ") starting...")
+  logging.warn("read_file(" + fname + ") starting (" + csvfilename + ")...")
   csvfields = []
   csvfilename = fname
   csvcontents = []
@@ -266,7 +289,7 @@ def buildResponseObjectError(errors):
   return result
 
 def getDataFiles():
-  # global csvpath, _filelist
+  global csvpath, _filelist, fname_glob
   if (fname_glob):   # Glob/template specified
     logging.info("fname_glob set (%s)..." % (csvpath + os.path.sep + fname_glob))
     onlyfiles = [os.path.basename(f) for f in glob.glob(csvpath + os.path.sep + fname_glob)]
@@ -277,10 +300,10 @@ def getDataFiles():
   return(_filelist)
 
 def getLastFilename():
-  return(_filelist[0])
+  return(getDataFiles()[0])
 
 def getFirstFilename():
-  return(_filelist[-1])
+  return(getDataFiles()[-1])
 
 def listDataFiles():
   result = "<UL>"
